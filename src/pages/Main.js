@@ -7,6 +7,8 @@ import { fetchRepo } from '../actions/repoActions';
 import Network from '../containers/Network';
 import Stats from '../containers/Stats';
 
+import '../styles/Main.css';
+
 class Main extends Component {
 	constructor(props){
 		super(props);
@@ -22,26 +24,49 @@ class Main extends Component {
 
 	render(){
 		return(
-			<div id='main'>
-				<div id='nav'>
-					<NavLink to={`/${this.props.username}/${this.props.reponame}`} exact> 
-						Network
-					</NavLink>
-					<NavLink to={`/${this.props.username}/${this.props.reponame}/stats`} exact> 
-						Stats
-					</NavLink>
-					<NavLink to={`/${this.props.username}/${this.props.reponame}/board`} exact> 
-						Board
-					</NavLink>
-					<NavLink to={`/${this.props.username}/${this.props.reponame}/activity`} exact> 
-						Activity
-					</NavLink>
+			<div>
+				<div id='nav-wrapper'>
+					<div id='nav'>
+						<div 
+							className='baron nav-tab'
+							style={{
+								color: '#cca2e1',
+								fontSize: '16px'}}>
+							VISION
+						</div>
+						<div className='nav-tab'>
+						<NavLink to={`/${this.props.username}/${this.props.reponame}`} exact> 
+							<div><i className='fas fa-code-branch'></i></div>
+							<div>Network</div>
+						</NavLink>
+						</div>
+						<div className='nav-tab'>
+						<NavLink to={`/${this.props.username}/${this.props.reponame}/stats`} exact> 
+							<div><i className='fas fa-chart-line'></i></div>
+							<div>Stats</div>
+						</NavLink>
+						</div>
+						<div className='nav-tab'>
+						<NavLink to={`/${this.props.username}/${this.props.reponame}/board`} exact> 
+							<div><i className='fas fa-columns'></i></div>
+							<div>Board</div>
+						</NavLink>
+						</div>
+						<div className='nav-tab'>
+						<NavLink to={`/${this.props.username}/${this.props.reponame}/activity`} exact> 
+							<div><i className='fas fa-bullseye'></i></div>
+							<div>Activity</div>
+						</NavLink>
+						</div>
+					</div>
 				</div>
 				<div id='page'>
-					<Switch>
-						<Route path='/:username/:reponame' exact component={Network}></Route>
-						<Route path='/:username/:reponame/stats' component={Stats}></Route>
-					</Switch>
+					<div id='main'>
+						<Switch>
+							<Route path='/:username/:reponame' exact component={Network}></Route>
+							<Route path='/:username/:reponame/stats' component={Stats}></Route>
+						</Switch>
+					</div>
 				</div>
 			</div>
 		)

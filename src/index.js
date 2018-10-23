@@ -7,6 +7,8 @@ import App from './App';
 import store from './store'
 import * as serviceWorker from './serviceWorker';
 
+import './styles/fonts.css'
+
 const root = document.getElementById('root');
 
 ReactDOM.render(

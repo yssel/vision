@@ -1,0 +1,56 @@
+#nav-wrapper{
+	background-image: linear-gradient(to right, #283147, #283147, #404b69, #404b69, #00818a);
+	position: fixed;
+	width: 100vw;
+	height: 50px;
+	z-index: 100;
+	vertical-align: middle;
+	display: table-cell;
+}
+
+#nav{
+	width: 90vw;
+	display: inline-block;
+	margin-left: 5vw;
+	margin-right: 5vw;
+}
+
+#nav div{
+	display: table-cell;
+	vertical-align: middle;
+}
+
+#nav .nav-tab{
+	height: 50px;
+	padding-right: 25px;
+}
+
+#nav .nav-tab div{
+	display: block;
+}
+
+#nav .nav-tab a{
+	font-family: 'loves';
+	font-weight: bold;
+	color: #bcbab8;
+	text-decoration: none;
+	font-size: 12px;
+	letter-spacing: 1px;	
+}
+
+#nav .active div{
+	color: white;
+	font-family: 'lemonmilk';
+	letter-spacing: 2px;
+}
+
+#page{
+	position: fixed;
+	width: 100vw;
+	height: 100vh;
+}
+
+#main{
+	margin-top: 50px;
+	
+}

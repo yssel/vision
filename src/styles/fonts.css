@@ -1,0 +1,30 @@
+.bold{
+	font-weight: bold;
+}
+
+@font-face {
+	font-family: "baron";
+	src: url("fonts/BaronNeue.otf");
+}
+
+.baron {
+	font-family: 'baron'!important;
+}
+
+@font-face {
+	font-family: "lemonmilk";
+	src: url("fonts/LemonMilk.otf");
+}
+
+.lemon-milk {
+	font-family: 'lemonmilk'!important;
+}
+
+@font-face {
+	font-family: "loves";
+	src: url("fonts/Loves.ttf");
+}
+
+.loves {
+	font-family: 'loves'!important;
+}
