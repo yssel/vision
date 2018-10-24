@@ -5,3 +5,26 @@
 	Teal-blue: #00818a;
 	Light-blue: #dbedf3;
 */
+
+.bgh-1, .bgh-2, .bgh-3, .bgh-white, .bgh-gray{ 
+	transition: background 0.2s; 
+}
+
+.bg-1{ background: #283149; }
+.bgh-1:hover{ background: #283149 }
+.bg-2{ background: #404b69 }
+.bgh-2:hover{ background: #404b69 }
+.bg-3{ background: #00818a }
+.bgh-3:hover{ background: #00818a }
+.bg-4{ background: #dbedf3 }
+.bgh-4:hover{ background: #dbedf3 }
+.bg-white{ background: white }
+.bg-black{ background: black }
+.bgh-gray:hover{ background: #eeeeee }
+
+.c-1{ color: #283149 }
+.c-2{ color: #404b69 }
+.c-3{ color: #00818a }
+.c-4{ color: #dbedf3 }
+.c-white{ color: white }
+.c-black{ color: black }

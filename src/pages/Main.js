@@ -30,13 +30,14 @@ class Main extends Component {
 						<div 
 							className='baron nav-tab'
 							style={{
+								paddingRight: '80px',
 								color: '#cca2e1',
 								fontSize: '16px'}}>
 							VISION
 						</div>
 						<div className='nav-tab'>
 						<NavLink to={`/${this.props.username}/${this.props.reponame}`} exact> 
-							<div><i className='fas fa-code-branch'></i></div>
+							<div><i className='fas fa-code-branch' style={{ transform: 'rotate(-90deg)' }}></i></div>
 							<div>Network</div>
 						</NavLink>
 						</div>

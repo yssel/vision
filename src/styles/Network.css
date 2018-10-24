@@ -1,3 +1,17 @@
 #network-tab{
 	width: 100vw;
 }
+
+#network-tools{
+	width: 80vw;
+	padding-left: 10vw;
+	padding-right: 10vw;
+	padding-top: 15px;
+	padding-bottom: 10px;
+	background: #dfe2fe;
+	border-bottom: 1px #cacaca solid;
+}
+
+#network-tools div {
+	display: inline-block;
+}

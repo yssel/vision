@@ -8,6 +8,8 @@ import store from './store'
 import * as serviceWorker from './serviceWorker';
 
 import './styles/fonts.css'
+import './styles/colors.css'
+import './styles/helper.css'
 
 const root = document.getElementById('root');
 
