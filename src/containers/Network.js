@@ -265,12 +265,14 @@ class Network extends Component{
 				.attr('cy', (d) => d.y)
 				.attr('r', this.state.NODE_RADIUS)
 
+		let panning = false
 		canvas.on('keydown', function(){
-			// compute transform
-			let transform = networkGraph.attr('transform').match(/(-?\d+)\s*,\s*(-?\d+)/)
-			if(transform){
-				let x = Number(transform[1])
-				let y = Number(transform[2])
+			if(!panning){
+				panning = true
+				// compute transform
+				let transform = networkGraph.attr('transform').match(/(-?\d+)\s*,\s*(-?\d+)/)
+				let x = Number(transform ? transform[1] : 0)
+				let y = Number(transform ? transform[2] : 0)
 
 				// check keycode
 				switch (d3.event.key) {
@@ -291,11 +293,14 @@ class Network extends Component{
 				}
 				// Transform graph
 				networkGraph.transition()
-					.duration(250)
+					.duration(150)
 					.attr('transform', 'translate('+x+','+y+')')
 			}
-					
 		}).on("focus", function(){});
+
+		canvas.on('keyup', function(){
+			panning = false
+		})
 	}
 
 	render(){
