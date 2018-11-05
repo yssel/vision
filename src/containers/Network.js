@@ -25,7 +25,6 @@ class Network extends Component{
 		}
 
 		this.getData = this.getData.bind(this);
-		this.panGraph = this.panGraph.bind(this);
 		this.drawNetwork = this.drawNetwork.bind(this);
 		this.getData(props);
 	}
@@ -34,12 +33,6 @@ class Network extends Component{
 		await props.fetchBranches(props.username, props.reponame)
 		await props.fetchCommits(props.username, props.reponame, this.props.branches)
 		await this.drawNetwork();
-	}
-
-	async panGraph(x,y){
-		console.log('panGraph')
-		await d3.select('#network-graph').attr('transform', 'translate('+x+','+y+')')
-		console.log('Lord help')
 	}
 
 	drawNetwork(){
@@ -213,7 +206,7 @@ class Network extends Component{
 			.attr('height', window.innerHeight - 60) // Navbar size is 60
 			.attr('focusable', false)
 		let networkGraph = canvas.append('g')
-			.attr('transform', 'translate(' + (window.innerWidth - width) + ', 0)')
+			.attr('transform', 'translate(' + (window.innerWidth - width) + ',0)')
 
 		
 		// // TEST draw oid
@@ -275,28 +268,33 @@ class Network extends Component{
 		canvas.on('keydown', function(){
 			// compute transform
 			let transform = networkGraph.attr('transform').match(/(-?\d+)\s*,\s*(-?\d+)/)
-			let x = Number(transform[1])
-			let y = Number(transform[2])
+			if(transform){
+				let x = Number(transform[1])
+				let y = Number(transform[2])
 
-			// check keycode
-			switch (d3.event.key) {
-				case 'ArrowLeft': //left 
-					x += 5
-					break;
-				case 'ArrowRight': // right
-					x -= 5
-					break;
-				case 'ArrowUp': // up
-					y -= 5
-					break;
-				case 'ArrowDown':
-					y += 5
-					break;
-				default:
-					break;
+				// check keycode
+				switch (d3.event.key) {
+					case 'ArrowLeft': //left 
+						x = window.innerWidth < width ? Math.min(x+100,0) : x
+						break;
+					case 'ArrowRight': // right
+						x = window.innerWidth < width ? Math.max(window.innerWidth - width, x-100) : x
+						break;
+					case 'ArrowUp': // up
+						y = window.innerHeight < height ? Math.max(window.innerHeight - height, y-100) : y
+						break;
+					case 'ArrowDown':
+						y = window.innerHeight < height ? Math.min(y+100,0) : y
+						break;
+					default:
+						break;
+				}
+				// Transform graph
+				networkGraph.transition()
+					.duration(250)
+					.attr('transform', 'translate('+x+','+y+')')
 			}
-			// Transform graph
-			networkGraph.attr('transform', 'translate('+x+','+y+')')			
+					
 		}).on("focus", function(){});
 	}
 
