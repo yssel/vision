@@ -256,6 +256,7 @@ class Network extends Component{
 				.attr('d', (d) => 'M '+ d.x0 + ' ' + d.y0 + ' C ' + d.x1 + ' ' + d.y1 + ', ' + d.x2 + ' ' + d.y2 + ', ' + d.x + ' ' + d.y)
 
 		// Draw commit nodes
+		let commitBox = d3.select('#commit-box')
 		let commitNodes = networkGraph.selectAll('circle')
 			.data(fetchedCommits)
 			.enter()
@@ -264,6 +265,17 @@ class Network extends Component{
 				.attr('cx', (d) => d.x)
 				.attr('cy', (d) => d.y)
 				.attr('r', this.state.NODE_RADIUS)
+			.on('mouseover', function(d){
+				commitBox.select('#cb-message').text(d.message)
+				commitBox.transition().style('opacity', '1.0')
+			})
+			.on('mouseout', function(){
+				commitBox.transition().style('opacity', '0.0')
+			})
+
+		canvas.on('mouseenter', function(){
+			this.focus()
+		})
 
 		let panning = false
 		canvas.on('keydown', function(){
@@ -293,8 +305,8 @@ class Network extends Component{
 				}
 				// Transform graph
 				networkGraph.transition()
-					.duration(150)
-					.attr('transform', 'translate('+x+','+y+')')
+					.duration(500)
+					.attr('transform', 'translate('+(x < 0 ? x : (d3.event.key === 'ArrowLeft' ? 0 : window.innerWidth - width) )+','+y+')')
 			}
 		}).on("focus", function(){});
 
@@ -330,6 +342,9 @@ class Network extends Component{
 				</div>
 				<div id='network-graph-wrapper'>
 					<svg id='network-graph'></svg>
+				</div>
+				<div id='commit-box'>
+					<span id='cb-message'></span>
 				</div>
 			</div>
 		)

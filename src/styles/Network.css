@@ -16,6 +16,10 @@
 	display: inline-block;
 }
 
+#network-graph:focus{
+	outline: none;
+}
+
 .commit-node{
 	fill: black;
 }
@@ -23,4 +27,15 @@
 .connection{
 	stroke: black;
 	fill: transparent;
+}
+
+#commit-box{
+	opacity: 0.0;
+	display: inline-block;
+	position: fixed;
+	top: 85vh;
+	height: 15vh;
+	width: 100vw;
+	background: blue;
+	z-index: 99;
 }
