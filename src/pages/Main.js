@@ -63,10 +63,10 @@ class Main extends Component {
 				</div>
 				<div id='page'>
 					<div id='main'>
-						<Switch>
+						{ this.props.username && <Switch>
 							<Route path='/:username/:reponame' exact component={Network}></Route>
 							<Route path='/:username/:reponame/stats' component={Stats}></Route>
-						</Switch>
+						</Switch>}
 					</div>
 				</div>
 			</div>

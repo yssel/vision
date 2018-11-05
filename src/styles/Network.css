@@ -15,3 +15,12 @@
 #network-tools div {
 	display: inline-block;
 }
+
+.commit-node{
+	fill: black;
+}
+
+.connection{
+	stroke: black;
+	fill: transparent;
+}
