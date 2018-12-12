@@ -3,6 +3,8 @@ import { connect } from 'react-redux';
 import { Switch, Route, NavLink } from 'react-router-dom';
 
 import { fetchRepo } from '../actions/repoActions';
+import { fetchBranches } from '../actions/branchesActions'
+import { fetchTags } from '../actions/tagsActions'
 
 import Network from '../containers/Network';
 import Stats from '../containers/Stats';
@@ -19,7 +21,9 @@ class Main extends Component {
 	}
 
 	async fetchRepoData(username, reponame, props) {
-		await props.fetchRepo(username, reponame)
+		await props.fetchRepo(username, reponame);
+		await props.fetchBranches(username, reponame);
+		await props.fetchTags(username, reponame);
 	}
 
 	render(){
@@ -27,14 +31,6 @@ class Main extends Component {
 			<div>
 				<div id='nav-wrapper'>
 					<div id='nav'>
-						<div 
-							className='baron nav-tab'
-							style={{
-								paddingRight: '80px',
-								color: '#cca2e1',
-								fontSize: '16px'}}>
-							VISION
-						</div>
 						<div className='nav-tab'>
 						<NavLink to={`/${this.props.username}/${this.props.reponame}`} exact> 
 							<div><i className='fas fa-code-branch' style={{ transform: 'rotate(-90deg)' }}></i></div>
@@ -60,13 +56,32 @@ class Main extends Component {
 						</NavLink>
 						</div>
 					</div>
+					<div id='repo-user'>
+						<div className='open-sans'>
+							<div id='username' className='c-4'>{`${this.props.username}/`}</div>
+							<div id='reponame' className='c-white bold'>{this.props.reponame}</div>
+						</div>
+					</div>
+					<div id='logout' >
+						<div>
+							<div>
+								<NavLink to={`/`} exact> 
+									<div><i className='fas fa-sign-out-alt'></i></div>
+									<div>Logout</div>
+								</NavLink>
+							</div>
+						</div>
+					</div>
 				</div>
 				<div id='page'>
 					<div id='main'>
-						{ this.props.username && <Switch>
+						{
+						this.props.username && 
+						<Switch>
 							<Route path='/:username/:reponame' exact component={Network}></Route>
 							<Route path='/:username/:reponame/stats' component={Stats}></Route>
-						</Switch>}
+						</Switch>
+						}
 					</div>
 				</div>
 			</div>
@@ -77,12 +92,16 @@ class Main extends Component {
 function mapStateToProps(state) {
 	return {
 		username: state.repo.data.owner,
-		reponame: state.repo.data.name
+		reponame: state.repo.data.name,
+		branches: state.branches.data.branches,
+		tags: state.tags.data.tags
 	}
 }
 
 function mapDispatchToProps(dispatch) {
 	return {
+		fetchBranches: async (owner, name) => await dispatch(fetchBranches(owner, name)),
+		fetchTags: async (owner, name) => await dispatch(fetchTags(owner, name)),
 		fetchRepo: async (owner, name) => await dispatch(fetchRepo(owner, name)),
 	}
 }

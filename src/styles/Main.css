@@ -1,20 +1,74 @@
+#page{
+	top: 0;
+	position: fixed;
+	width: 100vw;
+	height: 100vh;
+}
+
+#main{
+	margin-top: 60px;
+}
+
 #nav-wrapper{
-	background-image: linear-gradient(to right, #283147, #283147, #404b69, #404b69, #00818a);
+	top: 0;
+	background: #00818a;
+	/*background: linear-gradient(to right, #283147, #404b69, #404b69, #283147);*/
 	position: fixed;
 	width: 100vw;
 	height: 60px;
-	z-index: 100;
+	z-index: 99;
 	vertical-align: middle;
 	display: table-cell;
-	box-shadow: 0 1px 1px 1px #cacaca;
+}
+
+#repo-user{
+	display: inline-block;
+	width: 30vw;
+}
+
+#repo-user>div{
+	width: 30vw;
+	text-align: center;
+	display: table-cell;
+	height: 60px;
+	vertical-align: middle;
+}
+
+#repo-user div div{
+	display: block;
+}
+
+#logout{
+	width: 33vw;
+	height: 60px;
+	padding-right: 2vw;
+	float: right;
+}
+
+#logout>div{
+	float: right;
+}
+
+#logout>div>div{
+	height: 60px;
+	display: table-cell;
+	vertical-align: middle;
+}
+
+#logout div div div{
+	display: block;
+	text-align: center;
+
 }
 
 #nav{
-	width: 90vw;
+	float: left;
+	width: 31vw;
 	display: inline-block;
-	margin-left: 5vw;
-	margin-right: 5vw;
+	padding-left: 2vw;
+	padding-right: 2vw;
 }
+
 
 #nav div{
 	display: table-cell;
@@ -36,10 +90,10 @@
 	padding-bottom: 3px;
 }
 
-#nav .nav-tab a{
+#nav .nav-tab a, #logout a{
 	font-family: 'loves';
 	font-weight: bold;
-	color: #bcbab8;
+	color: #add2c9;
 	text-decoration: none;
 	font-size: 12px;
 	letter-spacing: 1px;	
@@ -50,15 +104,4 @@
 	color: white;
 	font-family: 'lemonmilk';
 	letter-spacing: 2px;
-}
-
-#page{
-	position: fixed;
-	width: 100vw;
-	height: 100vh;
-}
-
-#main{
-	margin-top: 60px;
-	
 }

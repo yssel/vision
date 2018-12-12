@@ -1,6 +1,37 @@
 .mr-30{ margin-right: 30px }
 .mr-15{ margin-right: 15px }
 .mr-10{ margin-right: 10px }
+.mr-5{ margin-right: 5px }
+.pd-lr-15{ 
+	padding-left: 15px; 
+	padding-right: 15px; 
+}
+.pd-lr-10{ 
+	padding-left: 10px; 
+	padding-right: 10px; 
+}
+
+.pd-lr-5{ 
+	padding-left: 5px; 
+	padding-right: 5px; 
+}
+
+.pd-ud-15{
+	padding-top: 15px;
+	padding-bottom: 15px;
+}
+.pd-ud-10{
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
+.pd-ud-5{
+	padding-top: 5px;
+	padding-bottom: 5px;
+}
+.m-ud-10{
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
 
 .button-main{
 	display: inline-block;
@@ -21,3 +52,7 @@
 	box-shadow: 0 3px 20px -8px black;
 	cursor: pointer;
 }
+
+.cursor-default{ cursor: default; }
+.cursor-pointer{ cursor: pointer; }
+.hover-underline:hover { text-decoration: underline }
