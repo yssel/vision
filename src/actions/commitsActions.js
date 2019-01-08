@@ -1,15 +1,16 @@
-import { authenticate } from './fetchActions';
+import { authenticate, authenticateRest } from './fetchActions';
 
 async function fetchInitCommit(user, repo){
 	let link = `https://api.github.com/repos/${user}/${repo}/commits?per_page=1`
 	// fetch header 
-	let response = await fetch(link)
+	let response = await authenticateRest(link)
 	let headerLink = response.headers.get('Link')
 	// Parse link to get last page
 	let lastPage = headerLink.match(/&page=(\d*)>; rel="last"/)[1]
 	// fetch init commit
 	let initCommitLink = `https://api.github.com/repos/${user}/${repo}/commits?per_page=1&page=${lastPage}`
-	let initCommitDate = await fetch(initCommitLink).then(function(response) { return response.json() })
+	let initCommitDate = await authenticateRest(initCommitLink, true)
+
 	initCommitDate = initCommitDate[0].commit.committer.date
 	return initCommitDate
 }
@@ -63,10 +64,6 @@ async function fetchRepoCommits(username, reponame, branchCursor = null, untilDa
 	        hasNextPage
 	      }
 	    }
-	  }
-	  rateLimit{
-	  	cost
-	  	remaining
 	  }
 	}`
 

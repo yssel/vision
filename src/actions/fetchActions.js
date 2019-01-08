@@ -18,3 +18,27 @@ export function* authenticate(){
 
 	yield fetch
 }
+
+export async function authenticateRest(url, json=false){
+	var bearer = 'Bearer 31b33190759de454348a4a70a3bc93420e62faba';
+	let response
+	if(json){
+		response = await fetch(url, {
+		method: 'GET',
+		withCredentials: true,
+		headers: {
+		    'Authorization': bearer,
+		    'Content-Type': 'application/json'}
+		}).then(function(response) { return response.json() })
+	}else{
+		response = await fetch(url, {
+		method: 'GET',
+		withCredentials: true,
+		headers: {
+		    'Authorization': bearer,
+		    'Content-Type': 'application/json'}
+		})	
+	}
+	
+	return response
+}
