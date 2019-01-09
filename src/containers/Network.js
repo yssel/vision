@@ -22,6 +22,7 @@ class Network extends Component{
             MASTER_Y: 100,
             MIN_HEIGHT: 600,
             MIN_WIDTH: 1000,
+            issues_viewed: [],
             Y_X: {} //keeps track of nearest X (node) per Y (row)
         }
 
@@ -44,8 +45,10 @@ class Network extends Component{
             n = Number(n.match(/\d+/g)[0])
             if(this.props.issues == null || this.props.issues[n] == null)
                 await this.props.fetchIssue(this.props.username, this.props.reponame, n)
+            issues = [this.props.issues[n], ...issues]
         }
 
+        this.setState({ issues_viewed: issues })
     }
 
     drawNetwork(){
@@ -358,35 +361,34 @@ class Network extends Component{
                 </div>
 
                 <div id='network-right' className='bg-gray'>
-                    {/*<div id='search-bar-wrapper' className='pd-lr-10 pd-ud-15'>
-                        <div id='search-bar' className='pd-lr-15'>
-                            <input id='search-input' 
-                                className='loves bold fs-12'
-                                type='text'
-                                spellCheck='false'
-                                placeholder='Jump to...'
-                            />
-                            <i className='fas fa-search-location c-dg'></i>
-                        </div>
-                    </div>*/}
-                    <div id='branches'>
-                        <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>BRANCHES</div>
-                        <div className='pd-lr-15 pd-ud-5'>
-                            {this.props.branches && this.props.branches.map((branch, i) => {
-                                return(
-                                    <div key={i} className='open-sans fs-12 hover-underline'>{branch.name}</div>
-                                )
-                            })}
-                        </div>
+                    <div id='issue-viewer'>
+                        <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>ISSUES</div>
+                        {this.state.issues_viewed && this.state.issues_viewed.map((issue, i) => {
+                            return(
+                                <div key={i} className='open-sans fs-12'>{issue.title}</div>
+                            )
+                        })}
                     </div>
-                    <div id='tags' className='pd-ud-15'>
-                        <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>TAGS</div>
-                        <div className='pd-lr-15 pd-ud-5'>
-                            {this.props.tags && this.props.tags.map((tag, i) => {
-                                return(
-                                    <div key={i} className='open-sans fs-12 hover-underline'>{tag.name}</div>
-                                )
-                            })}
+                    <div id='default-network-right'>
+                        <div id='branches'>
+                            <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>BRANCHES</div>
+                            <div className='pd-lr-15 pd-ud-5'>
+                                {this.props.branches && this.props.branches.map((branch, i) => {
+                                    return(
+                                        <div key={i} className='open-sans fs-12 hover-underline'>{branch.name}</div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                        <div id='tags' className='pd-ud-15'>
+                            <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>TAGS</div>
+                            <div className='pd-lr-15 pd-ud-5'>
+                                {this.props.tags && this.props.tags.map((tag, i) => {
+                                    return(
+                                        <div key={i} className='open-sans fs-12 hover-underline'>{tag.name}</div>
+                                    )
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>

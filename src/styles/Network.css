@@ -18,6 +18,14 @@
 	width:16vw;
 }
 
+#default-network-right{
+	visibility: hidden;
+}
+
+#issue-viewer{
+	/*visibility: hidden;*/
+}
+
 #network-tools{
 	padding-left: 2vw;
 	padding-right: 2vw;
