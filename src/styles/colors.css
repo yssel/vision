@@ -4,6 +4,7 @@
 	Violet: #404b69;
 	Teal-blue: #00818a;
 	Light-blue: #dbedf3;
+	Dark gray: #1d2323
 */
 
 .bgh-1, .bgh-2, .bgh-3, .bgh-white, .bgh-gray{ 
@@ -20,6 +21,7 @@
 .bgh-4:hover{ background: #dbedf3 }
 .bg-white{ background: white }
 .bg-black{ background: black }
+.bg-gray{ background: #eeeeee }
 .bgh-gray:hover{ background: #eeeeee }
 
 .c-1{ color: #283149 }
@@ -28,3 +30,4 @@
 .c-4{ color: #dbedf3 }
 .c-white{ color: white }
 .c-black{ color: black }
+.c-dg{ color: #1d2323; }

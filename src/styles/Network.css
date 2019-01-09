@@ -1,14 +1,29 @@
 #network-tab{
-	width: 100vw;
+}
+
+#network-left{
+	display: inline-block;
+	width: 84vw;
+}
+
+#network-right{
+	position: absolute;
+	border-left: 0.5px #cacaca solid;
+	/*background: blue;*/
+	float: right;
+	top: 0;
+	padding-top: 60px;
+	height: 100vh;
+	left: 84vw;
+	width:16vw;
 }
 
 #network-tools{
-	width: 80vw;
-	padding-left: 10vw;
-	padding-right: 10vw;
-	padding-top: 15px;
+	padding-left: 2vw;
+	padding-right: 2vw;
+	padding-top: 10px;
 	padding-bottom: 10px;
-	background: #dfe2fe;
+	background: #dbedf3;
 	border-bottom: 1px #cacaca solid;
 }
 
@@ -29,13 +44,62 @@
 	fill: transparent;
 }
 
-#commit-box{
-	opacity: 0.0;
+#commit-box-wrapper{
+	/*border-radius: 10px;*/
+	border-top: 1px dashed #5c8d89;
+	opacity: 1;
 	display: inline-block;
 	position: fixed;
 	top: 85vh;
 	height: 15vh;
-	width: 100vw;
-	background: blue;
+	width: 80vw;
+	/*margin-left: 2vw;*/
+	/*margin-right: 2vw;*/
+	padding-left: 2vw;
+	padding-right: 2vw;
+	background: #a7d7c5;
 	z-index: 99;
+}
+
+#cb-message{
+	color: #1d2323;
+	font-family: "Open Sans";
+	/*font-weight: bold;*/
+}
+
+#sidenav .header {
+	background: #ebebeb
+}
+
+#sidenav{
+	width: 14vw;
+	height: 100vh;
+	background: #faf9f9;
+	/*background: #e0e0ec;*/
+	display: inline-block;
+	position: fixed;
+	z-index: 100;
+	border-right: 0.5px #cacaca solid;
+
+}
+
+#search-bar{
+	margin: 0;
+	height: 30px;
+	background: white;
+	border-radius: 20px;
+	border: 1px solid #dfe1e5;
+	/*pad*/
+}
+
+#search-bar i{
+	line-height: 28px;
+	width: 10%;
+}
+
+#search-input{
+	line-height: 25px;
+	outline: none;
+	border: none;
+	width: 90%;
 }

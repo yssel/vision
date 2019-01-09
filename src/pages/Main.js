@@ -58,8 +58,12 @@ class Main extends Component {
 					</div>
 					<div id='repo-user'>
 						<div className='open-sans'>
-							<div id='username' className='c-4'>{`${this.props.username}/`}</div>
-							<div id='reponame' className='c-white bold'>{this.props.reponame}</div>
+							
+							<div id='username' className='c-4 fs-12'>
+								<i className='fab fa-github mr-5 c-dg'></i>
+								{`${this.props.username} /`}
+							</div>
+							<div id='reponame' className='c-white bold fs-14'>{this.props.reponame}</div>
 						</div>
 					</div>
 					<div id='logout' >
