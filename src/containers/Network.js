@@ -36,12 +36,14 @@ class Network extends Component{
         await this.drawNetwork();
     }
 
-    extractIssues(message){
+    async extractIssues(message){
         let numbers = message.match(/#\d+/g);
         let issues = [];
         let n;
         while( (n = numbers.pop()) != null ) {
-            this.props.fetchIssue(this.props.username, this.props.reponame, n.match(/\d+/g))
+            n = Number(n.match(/\d+/g)[0])
+            if(this.props.issues == null || this.props.issues[n] == null)
+                await this.props.fetchIssue(this.props.username, this.props.reponame, n)
         }
 
     }
