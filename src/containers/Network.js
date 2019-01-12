@@ -29,7 +29,10 @@ class Network extends Component{
         this.getData = this.getData.bind(this);
         this.extractIssues = this.extractIssues.bind(this);
         this.drawNetwork = this.drawNetwork.bind(this);
-        this.getData(props);
+    }
+
+    componentDidMount(){
+        this.getData(this.props);
     }
 
     async getData(props){
@@ -41,13 +44,14 @@ class Network extends Component{
         let numbers = message.match(/#\d+/g);
         let issues = [];
         let n;
-        while( (n = numbers.pop()) != null ) {
-            n = Number(n.match(/\d+/g)[0])
-            if(this.props.issues == null || this.props.issues[n] == null)
-                await this.props.fetchIssue(this.props.username, this.props.reponame, n)
-            issues = [this.props.issues[n], ...issues]
+        if(numbers){
+            while((n = numbers.pop()) != null ) {
+                n = Number(n.match(/\d+/g)[0])
+                if(this.props.issues == null || this.props.issues[n] == null)
+                    await this.props.fetchIssue(this.props.username, this.props.reponame, n)
+                issues = [this.props.issues[n], ...issues]
+            }
         }
-
         this.setState({ issues_viewed: issues })
     }
 
@@ -269,6 +273,8 @@ class Network extends Component{
         // Draw commit nodes
         let networkClass = this
         let commitBox = d3.select('#commit-box')
+        let defaultNetworkRight = d3.select('#default-network-right')
+        let issueViewer = d3.select('#issue-viewer')
         let commitNodes = networkGraph.selectAll('circle')
             .data(fetchedCommits)
             .enter()
@@ -282,10 +288,14 @@ class Network extends Component{
                 commitBox.select('#cb-message').text(d.message)
                 commitBox.transition().style('opacity', '1.0')
                 networkClass.extractIssues(d.message);
+                defaultNetworkRight.style('visibility', 'hidden')
+                issueViewer.style('display', 'block')
             })
             .on('mouseout', function(){
                 d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS)
                 commitBox.transition().style('opacity', '0.0')
+                issueViewer.style('display', 'none')
+                defaultNetworkRight.style('visibility', 'visible')
             })
 
         canvas.on('mouseenter', function(){
@@ -350,14 +360,14 @@ class Network extends Component{
                             </div>
                         </div>
                     </div>
-                <div id='network-graph-wrapper'>
-                    <svg id='network-graph'></svg>
-                </div>
-                <div id='commit-box-wrapper'>
-                    <div id='commit-box'>
-                        <span id='cb-message'></span>
+                    <div id='network-graph-wrapper'>
+                        <svg id='network-graph'></svg>
                     </div>
-                </div>
+                    <div id='commit-box-wrapper'>
+                        <div id='commit-box'>
+                            <span id='cb-message'></span>
+                        </div>
+                    </div>
                 </div>
 
                 <div id='network-right' className='bg-gray'>

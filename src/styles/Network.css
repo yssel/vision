@@ -19,11 +19,11 @@
 }
 
 #default-network-right{
-	visibility: hidden;
+	/*visibility: hidden;*/
 }
 
 #issue-viewer{
-	/*visibility: hidden;*/
+	display: none;
 }
 
 #network-tools{

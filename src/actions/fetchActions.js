@@ -11,7 +11,9 @@ export function* authenticate(){
 		if (!options.headers) {
 			options.headers = {}
 		}
+		options.withCredentials = true
 		options.headers['authorization'] = 'Bearer 31b33190759de454348a4a70a3bc93420e62faba'
+		options.headers['Content-Type'] = 'application/json'
 
 		next()
 	})
