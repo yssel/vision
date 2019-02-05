@@ -29,55 +29,58 @@ class Main extends Component {
 	render(){
 		return(
 			<div>
-				<div id='nav-wrapper'>
-					<div id='nav'>
-						<div className='nav-tab'>
-						<NavLink to={`/${this.props.username}/${this.props.reponame}`} exact> 
-							<div><i className='fas fa-code-branch' style={{ transform: 'rotate(-90deg)' }}></i></div>
-							<div>Network</div>
-						</NavLink>
-						</div>
-						<div className='nav-tab'>
-						<NavLink to={`/${this.props.username}/${this.props.reponame}/stats`} exact> 
-							<div><i className='fas fa-chart-line'></i></div>
-							<div>Stats</div>
-						</NavLink>
-						</div>
-						<div className='nav-tab'>
-						<NavLink to={`/${this.props.username}/${this.props.reponame}/board`} exact> 
-							<div><i className='fas fa-columns'></i></div>
-							<div>Board</div>
-						</NavLink>
-						</div>
-						<div className='nav-tab'>
-						<NavLink to={`/${this.props.username}/${this.props.reponame}/activity`} exact> 
-							<div><i className='fas fa-bullseye'></i></div>
-							<div>Activity</div>
-						</NavLink>
-						</div>
+				<div id='sidenav' style={{display: 'inline-block'}}>
+					<div id='burger'>
+						<i className="fas fa-bars"></i>
 					</div>
-					<div id='repo-user'>
-						<div className='open-sans'>
-							
-							<div id='username' className='c-4 fs-12'>
-								<i className='fab fa-github mr-5 c-dg'></i>
-								{`${this.props.username} /`}
-							</div>
-							<div id='reponame' className='c-white bold fs-14'>{this.props.reponame}</div>
-						</div>
+
+					<div id='nav'>
+					<div className='nav-tab'>
+					<NavLink to={`/${this.props.username}/${this.props.reponame}`} exact> 
+						<div><i className='fas fa-code-branch' style={{ transform: 'rotate(-90deg)' }}></i></div>
+						{/*<div>Network</div>*/}
+					</NavLink>
+					</div>
+					<div className='nav-tab'>
+					<NavLink to={`/${this.props.username}/${this.props.reponame}/stats`} exact> 
+						<div><i className='fas fa-chart-line'></i></div>
+						{/*<div>Stats</div>*/}
+					</NavLink>
+					</div>
+					<div className='nav-tab'>
+					<NavLink to={`/${this.props.username}/${this.props.reponame}/board`} exact> 
+						<div><i className='fas fa-columns'></i></div>
+						{/*<div>Board</div>*/}
+					</NavLink>
+					</div>
+					<div className='nav-tab'>
+					<NavLink to={`/${this.props.username}/${this.props.reponame}/activity`} exact> 
+						<div><i className='fas fa-bullseye'></i></div>
+						{/*<div>Activity</div>*/}
+					</NavLink>
+					</div>
 					</div>
 					<div id='logout' >
 						<div>
 							<div>
 								<NavLink to={`/`} exact> 
 									<div><i className='fas fa-sign-out-alt'></i></div>
-									<div>Logout</div>
+									{/*<div>Logout</div>*/}
 								</NavLink>
 							</div>
 						</div>
 					</div>
 				</div>
 				<div id='page'>
+					<div id='bar'>
+						<div id='repo-user'>
+							<span id='username' className='c-4 fs-12'>
+								<i className='fab fa-github mr-5 c-dg'></i>
+								{`${this.props.username}/`}
+							</span>
+							<span id='reponame' className='c-white bold fs-14'>{this.props.reponame}</span>
+						</div>
+					</div>
 					<div id='main'>
 						{
 						this.props.username && 

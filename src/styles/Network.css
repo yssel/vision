@@ -1,4 +1,16 @@
+:root{
+	--network-height: 55vh;
+}
+
 #network-tab{
+}
+
+#network-graph-wrapper{
+	width: 95vw;
+	height: calc(var(--network-height) - var(--bar-height));
+	background: white;
+	display: table-cell;
+	vertical-align: middle;
 }
 
 #network-left{
@@ -39,6 +51,9 @@
 	display: inline-block;
 }
 
+#network-graph{
+}
+
 #network-graph:focus{
 	outline: none;
 }
@@ -48,25 +63,22 @@
 }
 
 .connection{
-	stroke: black;
-	fill: transparent;
+	stroke-width: 3px;
+	/*fill: transparent;*/
 }
 
 #commit-box-wrapper{
-	/*border-radius: 10px;*/
-	border-top: 1px dashed #5c8d89;
+	border-top: 0.5px #cacaca solid;
 	opacity: 1;
 	display: inline-block;
-	position: fixed;
-	top: 85vh;
-	height: 15vh;
-	width: 80vw;
-	/*margin-left: 2vw;*/
-	/*margin-right: 2vw;*/
-	padding-left: 2vw;
-	padding-right: 2vw;
-	background: #a7d7c5;
+	width: 95vw;
+	height: calc(100vh - var(--network-height));
+	background: #faf9f9;
 	z-index: 99;
+}
+
+#commit-box{
+	padding: 20px;
 }
 
 #cb-message{

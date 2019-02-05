@@ -38,7 +38,7 @@ export default function repoReducer(state = {
 					owner: action.payload.owner.login,
 					name: action.payload.name,
 					description: action.payload.description,
-					master_oid: action.payload.defaultBranchRef.target.oid
+					master_sha: action.payload.defaultBranchRef.target.sha
 				},
 				fetching: false,
 				fetched: true

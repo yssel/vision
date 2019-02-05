@@ -19,7 +19,7 @@ async function fetchRepoData(username, reponame){
 			owner {	login }
 			name
 			description
-			defaultBranchRef { target { oid } }
+			defaultBranchRef { target { sha: oid } }
 		}
 	}`
 

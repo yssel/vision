@@ -1,107 +1,75 @@
-#page{
+@import url('https://fonts.googleapis.com/css?family=Arvo|Josefin+Sans|Montserrat|Roboto+Slab');
+
+:root{
+	--bar-height: 40px;
+}
+
+#sidenav{
+	width: 5vw;
+	position: relative;
+}
+
+#burger{
 	top: 0;
-	position: fixed;
-	width: 100vw;
-	height: 100vh;
-}
-
-#main{
-	margin-top: 60px;
-}
-
-#nav-wrapper{
-	top: 0;
-	background: #00818a;
-	/*background: linear-gradient(to right, #283147, #404b69, #404b69, #283147);*/
-	position: fixed;
-	width: 100vw;
-	height: 60px;
-	z-index: 99;
-	vertical-align: middle;
-	display: table-cell;
-}
-
-#repo-user{
-	display: inline-block;
-	width: 30vw;
-}
-
-#repo-user>div{
-	width: 30vw;
-	text-align: center;
-	display: table-cell;
-	height: 60px;
-	vertical-align: middle;
-}
-
-#repo-user div div{
-	display: block;
 }
 
 #logout{
-	width: 33vw;
-	height: 60px;
-	padding-right: 2vw;
-	float: right;
-}
-
-#logout>div{
-	float: right;
-}
-
-#logout>div>div{
-	height: 60px;
-	display: table-cell;
-	vertical-align: middle;
-}
-
-#logout div div div{
-	display: block;
-	text-align: center;
-
+	position: absolute;
+	bottom: 0;
 }
 
 #nav{
-	float: left;
-	width: 31vw;
-	display: inline-block;
-	padding-left: 2vw;
-	padding-right: 2vw;
+	width: 100%;
+	position: absolute;
+	top: 14vh;
 }
 
-
-#nav div{
-	display: table-cell;
-	vertical-align: middle;
-}
-
-#nav .nav-tab{
-	height: 60px;
-	padding-right: 25px;
+.nav-tab, #logout, #burger{
+	height: 7vh;
+	width: 100%;
 	text-align: center;
 }
 
-#nav .nav-tab div{
-	display: block;
+.nav-tab a , #logout a, #burger{
+	color: black;
+	line-height: 7vh;
+	font-weight: 100;
 }
-
-#nav .nav-tab div i{
-	font-size: 14px;
-	padding-bottom: 3px;
+/*
+.nav-tab.burger{
+	margin-top: 20px;
+	margin-bottom: 7vh;
 }
-
-#nav .nav-tab a, #logout a{
-	font-family: 'loves';
-	font-weight: bold;
-	color: #add2c9;
-	text-decoration: none;
-	font-size: 12px;
-	letter-spacing: 1px;	
-}
-
-#nav .active div{
-	font-weight: normal;
-	color: white;
+*/
+#sidenav .active div{
+	font-weight: 800;
+	color: var(--color-1);
 	font-family: 'lemonmilk';
 	letter-spacing: 2px;
 }
+
+#bar i{ color: white; }
+
+#bar{
+	padding-left: 15px;
+	padding-right: 15px;
+	width: calc(95vw - 30px);
+	height: var(--bar-height);
+	background: var(--color-1);
+	display: table-cell;
+	vertical-align: middle;
+	font-family: 'Josefin Sans'
+}
+
+#repo-user{
+	width: 25%;
+}
+
+#page{
+	left: 5vw;
+	position: fixed;
+	width: 95vw;
+	height: 100vh;
+	display: inline-block;
+}
+

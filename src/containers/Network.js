@@ -12,15 +12,18 @@ class Network extends Component{
         super(props);
         // Initialize constants
         this.state = {
-            MAX_WIDTH: window.innerWidth*0.86,
+            paths: null,
+            checkout: 'ALL',
+            checkout_from: null,
+            MAX_WIDTH: window.innerWidth*0.95,
             GRAPH_X: 0,
             GRAPH_Y: 0,
             NODE_RADIUS: 5,
-            INTERVAL_X: 40,
-            INTERVAL_Y: 40,
-            MARGINS: { top: 100, bottom: 100, left: 40, right: 40 },
-            MASTER_Y: 100,
-            MIN_HEIGHT: 600,
+            INTERVAL_X: 20,
+            INTERVAL_Y: 30,
+            MARGINS: { top: 20, bottom: 20, left: 20, right: 20 },
+            MASTER_Y: 20,
+            MIN_HEIGHT: window.innerHeight*0.5,
             MIN_WIDTH: 1000,
             issues_viewed: [],
             Y_X: {} //keeps track of nearest X (node) per Y (row)
@@ -28,6 +31,7 @@ class Network extends Component{
 
         this.getData = this.getData.bind(this);
         this.extractIssues = this.extractIssues.bind(this);
+        this.curveCoords = this.curveCoords.bind(this);
         this.drawNetwork = this.drawNetwork.bind(this);
     }
 
@@ -36,7 +40,7 @@ class Network extends Component{
     }
 
     async getData(props){
-        await props.fetchCommits(props.username, props.reponame, this.props.branches)
+        await props.fetchCommits(props.username, props.reponame, this.state.checkout, this.state.checkout_from)
         await this.drawNetwork();
     }
 
@@ -55,6 +59,19 @@ class Network extends Component{
         this.setState({ issues_viewed: issues })
     }
 
+    curveCoords(mx, my, cx1, cy1, cx2, cy2, cx, cy){
+        return (
+            {
+                mx,
+                my,
+                cx1,
+                cy2,
+                cx,
+                cy
+            }
+        )
+    }
+
     drawNetwork(){
         let MAX_WIDTH = this.state.MAX_WIDTH;
         let commits = this.props.commits.slice();
@@ -68,159 +85,193 @@ class Network extends Component{
                         .domain([0, commits.length-1])
                         .range([width-this.state.MARGINS.right, this.state.MARGINS.left]);
 
-        let updatedXCommits = commits.map( 
-            (commit, i) => 
-                Object.assign({}, commit, 
-                    {
-                        index: i,
-                        x: parseInt(xScale(i)),
-                        drawn: false
-                    }
-            ))
+        let commitsWithX = commits.map( 
+            (commit, i) => {
+                return({
+                    ...commit, 
+                    index: i,
+                    x: parseInt(xScale(i)),
+                    drawn: false
+                });
+        })
 
         // Y Coordinates
-        let updatedCommits = updatedXCommits.slice()
-        let updatedYCommits = updatedXCommits.slice()
-        let beyondMasterCommits = []
-        let counter = 0;
-        let masterfound = false
-        while(updatedCommits.length > 0){
-            // dequeue
-            let commit = updatedCommits.shift()
+        let commitsQ = commitsWithX.slice()
+        let commitsWithYandX = commitsWithX.slice()
+        while(commitsQ.length){
+            // get recentmost commit
+            let commit = commitsQ.shift()
             let y
 
-            if(this.props.master_oid === commit.oid) masterfound = true
-            if(masterfound){
-                // Check if the commit is NOT YET drawn,
-                if(!updatedYCommits[commit.index].drawn){
-                    // check if commit is master/DEFAULT branch
-                    if(this.props.master_oid === commit.oid){
-                        updatedYCommits[commit.index].y = this.state.MASTER_Y
+            // Draw itself
+            // Check if the commit is NOT YET drawn,
+            if(!commitsWithYandX[commit.index].drawn){
+                // check if commit is master/DEFAULT branch
+                if(this.props.master_sha === commit.sha){
+                    commitsWithYandX[commit.index].y = this.state.MASTER_Y
+                    y = this.state.MASTER_Y
+                }else{
+                    // Get available Y Coordinate
+                    y = -1
+                    for(let row in this.state.Y_X){
+                        if(this.state.Y_X[row] > commit.x) {
+                            y = row
+                            break
+                        }
+                    }
+                    // No Y available, create new Y
+                    if(y === -1) {
+                        let yCoords = Object.keys(this.state.Y_X)
+                        y = yCoords.length ? +yCoords[yCoords.length-1] + this.state.INTERVAL_Y : +this.state.MASTER_Y + this.state.INTERVAL_Y
+                    }
+
+                    // Assign Y
+                    commitsWithYandX[commit.index].y = +y
+                }
+
+                commitsWithYandX[commit.index].drawn = true
+                // update Y_X tally
+                if(typeof(this.state.Y_X[y]) === 'undefined' || this.state.Y_X[y] > commit.x){
+                    this.setState({
+                        Y_X: {
+                            ...this.state.Y_X,
+                            [y] : commit.x
+                        }
+                    })
+                }
+            }
+
+            // Draw parents                
+            let firstParent = true
+            let i
+            for(i=0; i<commit.parents.length; i++){
+                // Check if parent has been drawn
+                // Fetch parent & record itself as child
+                let commitParent = commitsQ.find(x => x.sha === commit.parents[i].sha)
+                if(commitParent.children){
+                    commitParent.children.push({
+                        sha: commit.sha,
+                        x: commit.x,
+                        y: commit.y,
+                        index: commit.index
+                    })
+                }else{
+                    commitParent.children = [{
+                        sha: commit.sha,
+                        x: commit.x,
+                        y: commit.y,
+                        index: commit.index
+                    }]
+                }
+                
+                // Check if this parent has been drawn
+                let parentDrawn = true
+                if(typeof(commitParent) !== "undefined") {
+                    parentDrawn = commitParent.drawn
+                }
+                let test = false
+                
+                if(!parentDrawn){
+
+                    // Master special case
+                    if(this.props.master_sha === commitParent.sha){
+                        
+                        commitsWithYandX[commitParent.index].y = this.state.MASTER_Y
                         y = this.state.MASTER_Y
-                    }else{
+                    }
+                    // First parent goes to same row (except if from master)
+                    else if(firstParent){
+                        commitsWithYandX[commitParent.index].y = commitsWithYandX[commit.index].y
+                        y = commitsWithYandX[commit.index].y
+                    }
+                    // Other parents goes to last new row
+                    else{
                         // Get available Y Coordinate
                         y = -1
                         for(let row in this.state.Y_X){
-                            if(this.state.Y_X[row] > commit.x) {
+                            if(+row > commitsWithYandX[commit.index].y && this.state.Y_X[row] > commitParent.x) {
                                 y = row
                                 break
                             }
                         }
+
                         // No Y available, create new Y
                         if(y === -1) {
                             let yCoords = Object.keys(this.state.Y_X)
-                            y = yCoords.length === 0 ? +this.state.MASTER_Y + this.state.INTERVAL_Y : +yCoords[yCoords.length-1] + this.state.INTERVAL_Y
+                            y = +yCoords[yCoords.length-1] + this.state.INTERVAL_Y
                         }
 
                         // Assign Y
-                        updatedYCommits[commit.index].y = +y
+                        commitsWithYandX[commitParent.index].y = +y
                     }
-
-                    updatedYCommits[commit.index].drawn = true
+                    
+                    commitsWithYandX[commitParent.index].drawn = true
                     // update Y_X tally
-                    if(typeof(this.state.Y_X[y]) === 'undefined' || this.state.Y_X[y] > commit.x){
+                    if(typeof(this.state.Y_X[y]) === 'undefined' || 
+                        this.state.Y_X[y] > commitParent.x){
+                        
                         this.setState({
                             Y_X: {
                                 ...this.state.Y_X,
-                                [y] : commit.x
+                                [y] : commitParent.x
+                            }
+                        })
+                    }
+
+
+                }else if(firstParent && commitParent.y > commit.y){
+                    // FIX UP PARENT (no FIRST parent can be below its commit. Fix y)
+                    y = commit.y
+                    commitsWithYandX[commitParent.index].y = y
+                    // Notify new Y value to its children
+                    for(let x=0; x<commitParent.children.length; x++){
+                        let child = commitsWithYandX[commitParent.children[x].index]
+                        for(let y=0; y<child.parents.length; y++){
+                            if(child.parents[y].sha === commitParent.sha){
+                                child.parents[y].y = y
+                                break;
+                            }
+                        }
+                    }
+
+                    // update Y_X tally
+                    if(typeof(this.state.Y_X[y]) === 'undefined' || this.state.Y_X[y] > commitParent.x){
+                        this.setState({
+                            Y_X: {
+                                ...this.state.Y_X,
+                                [y] : commitParent.x
                             }
                         })
                     }
                 }
 
-                // Draw parents
-                let parents = commit.parents.edges.map((parent) => parent.node.oid)
-                
-                let firstParent = true
-                let i
-                for(i=0; i<parents.length; i++){
-                    let parent = parents[i]
-                    // Check if parent has been drawn
-                    // Fetch parent
-                    let commitParent = updatedCommits.find(x => x.oid === parent)
-                    
-                    // Check if this parent has been drawn
-                    let parentDrawn = true
-                    if(typeof(commitParent) !== "undefined") {
-                        parentDrawn = commitParent.drawn
-                    }
-                    let test = false
-                    
-                    if(!parentDrawn){
-                        // Master special case
-                        if(this.props.master_oid === commitParent.oid){
-                            updatedYCommits[commitParent.index].y = this.state.MASTER_Y
-                            y = this.state.MASTER_Y
+                // Update Y Values
+                commit.parents[i].y = commitParent.y;
+                commitsWithYandX[commit.index].parents[i].y = commitParent.y
 
-                            if(firstParent) firstParent = false 
-                        }
-                        // First parent goes to same row (except if from master)
-                        else if(firstParent){
-                            updatedYCommits[commitParent.index].y = updatedYCommits[commit.index].y
-                            firstParent = false
-                            y = updatedYCommits[commit.index].y
-                        }
-                        // Other parents goes to last new row
-                        else{
-                            // Get available Y Coordinate
-                            y = -1
-                            for(let row in this.state.Y_X){
-                                if(+row > updatedYCommits[commit.index].y && this.state.Y_X[row] > commitParent.x) {
-                                    y = row
-                                    break
-                                }
+                // allocate space for path of diverging branch
+                if(firstParent && commitParent.y < commit.y){
+                    // update Y_X tally
+                    y = commit.y
+                    // update Y_X tally
+                    if(typeof(this.state.Y_X[y]) === 'undefined' || this.state.Y_X[y] > commitParent.x){
+                        this.setState({
+                            Y_X: {
+                                ...this.state.Y_X,
+                                [y] : commitParent.x
                             }
-
-                            // No Y available, create new Y
-                            if(y === -1) {
-                                let yCoords = Object.keys(this.state.Y_X)
-                                y = +yCoords[yCoords.length-1] + this.state.INTERVAL_Y
-                            }
-
-                            // Assign Y
-                            updatedYCommits[commitParent.index].y = +y
-                        }
-
-                        
-                        updatedYCommits[commitParent.index].drawn = true
-                        // update Y_X tally
-                        if(typeof(this.state.Y_X[y]) === 'undefined' || this.state.Y_X[y] > commitParent.x){
-                            this.setState({
-                                Y_X: {
-                                    ...this.state.Y_X,
-                                    [y] : commitParent.x
-                                }
-                            })
-                        }
-                    }else if(firstParent && commitParent.y > commit.y){
-                        // FIX UP PARENT (no parent can be below its commit. Fix y)
-                        updatedYCommits[commitParent.index].y = commit.y
-                        y = commit.y
-                        // update Y_X tally
-                        if(typeof(this.state.Y_X[y]) === 'undefined' || this.state.Y_X[y] > commitParent.x){
-                            this.setState({
-                                Y_X: {
-                                    ...this.state.Y_X,
-                                    [y] : commitParent.x
-                                }
-                            })
-                        }
+                        })
                     }
-
-                    
                 }
+
+                firstParent = firstParent ? false : firstParent
             }
-            // else{
-            //  // store up commits that are beyond master branch's most recent commit
-            //  beyondMasterCommits = beyondMasterCommits.concat(commit)
-            // }
         }
 
         // Update the commits with X and Y Coordinates
-        this.props.updateCommits(updatedYCommits)
-        let fetchedCommits = updatedYCommits.slice()
-        let height = d3.max(updatedYCommits.map(commit => commit.y)) + this.state.MARGINS.bottom
-
+        this.props.updateCommits(commitsWithYandX)
+        let fetchedCommits = commitsWithYandX.slice()
+        let height = d3.max(commitsWithYandX.map(commit => commit.y)) + this.state.MARGINS.bottom
         /*
 
         DRAWING PORTION
@@ -231,44 +282,594 @@ class Network extends Component{
         // Set up canvas
         let canvas = d3.select('#network-graph')
             .attr('width', MAX_WIDTH)
-            .attr('height', window.innerHeight - 60) // Navbar size is 60
+            .attr('height', height) // Navbar size is 60
             .attr('focusable', false)
         let networkGraph = canvas.append('g')
             .attr('transform', 'translate(' + (MAX_WIDTH - width) + ',0)')
 
-        // Set up curve coordinates
-        let parentCoords = []
+        // Parents paths:
+        let parentPaths = {}
         let i,j
-        // each commit
         for(i=0; i<fetchedCommits.length; i++){
-            // parents per commit
-            for(j=0; j<fetchedCommits[i].parents.edges.length; j++){
-                let parent = fetchedCommits.find(x => x.oid === fetchedCommits[i].parents.edges[j].node.oid)
-                if(typeof(parent) === 'undefined') break
-                // control points for curve
-                let coordinates = {
-                    x0: fetchedCommits[i].x,
-                    y0: fetchedCommits[i].y,
-                    x1: parseInt(fetchedCommits[i].x - ((fetchedCommits[i].x-parent.x)/2)),
-                    y1: fetchedCommits[i].y,
-                    x2: parseInt(parent.x + ((fetchedCommits[i].x - parent.x)/2)),
-                    y2: parent.y,
-                    x: parent.x,
-                    y: parent.y
-                }
+            let commit = fetchedCommits[i];
 
-                parentCoords.push(coordinates)
+            for(j=0; j<commit.parents.length; j++){
+                let parent = fetchedCommits.find(x => (x.sha === commit.parents[j].sha));
+                if(typeof(parent) === 'undefined') break;
+
+                let commit_paths = []
+
+                let color = parent.y < commit.y ? commit.y : parent.y
+                if(!parentPaths[color]) parentPaths[color] = []
+
+                // Parent on same row
+                if(parent.y == commit.y){
+                    // draw straight path
+                    parentPaths[color].push({
+                        mx: commit.x, 
+                        my: commit.y, 
+                        cx1: commit.x-this.state.INTERVAL_X, 
+                        cy1: commit.y,
+                        cx2: parent.x+this.state.INTERVAL_X,
+                        cy2: parent.y,
+                        cx: parent.x,
+                        cy: parent.y
+                    })
+                }
+                // Parent is below
+                else if(parent.y > commit.y){
+                    // Check parent for a connection to its right
+                    let parent_alone = true;
+                    for(let i=0; i<parent.children.length; i++){
+                        if(parent.children[i].y === parent.y){
+                            parent_alone = false;
+                            break;
+                        }
+                    }
+
+                    // Immediate below
+                    if(parent.y === (commit.y-this.state.INTERVAL_Y)){
+                        // Immediate left
+                        if(parent.x ===(commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
+                            if(parent_alone){
+                                // Down left
+                                parentPaths[color].push({
+                                    mx: commit.x, 
+                                    my: commit.y, 
+                                    cx1: commit.x, 
+                                    cy1: parent.y,
+                                    cx2: commit.x, 
+                                    cy2: parent.y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            }else{
+                                // Half Down, Half left
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y+(0.5*this.state.INTERVAL_Y)
+                                })
+
+                                // Half Left, half down
+                                parentPaths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: parent.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: parent.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            }
+                        }
+                        // Far left
+                        else{
+                            if(parent_alone){
+                                // Down left
+                                parentPaths[color].push({
+                                    mx: commit.x, 
+                                    my: commit.y, 
+                                    cx1: commit.x, 
+                                    cy1: parent.y,
+                                    cx2: commit.x, 
+                                    cy2: parent.y,
+                                    cx: commit.x-this.state.INTERVAL_X,
+                                    cy: parent.y
+                                })
+                                // left straight
+                                parentPaths[color].push({
+                                    mx: commit.x-this.state.INTERVAL_X,
+                                    my: parent.y,
+                                    cx1: commit.x-this.state.INTERVAL_X,
+                                    cy1: parent.y,
+                                    cx2: commit.x-this.state.INTERVAL_X,
+                                    cy2: parent.y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            }else{
+                                // Half Down, Half left
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1:commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y+(0.5*this.state.INTERVAL_Y)
+                                })
+                                // // Left
+                                parentPaths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my:commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx1: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    cy: parent.y-(0.5*this.state.INTERVAL_Y)
+                                })
+                                // // Half left, Half Down
+                                parentPaths[color].push({
+                                    mx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    my: parent.y-(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: parent.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: parent.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    y: parent.y
+                                })
+                            }
+                        }
+                    }
+                    // Far below
+                    else{
+                        // Immediate left
+                        if(parent.x ===(commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
+                            if(parent_alone){
+                                // Down straight
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y,
+                                    cx2: commit.x,
+                                    cy2: commit.y,
+                                    cx: commit.x,
+                                    cy: parent.y-this.state.INTERVAL_Y,  
+                                })
+                                // Down, Left
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: parent.y-this.state.INTERVAL_Y,
+                                    cx1: commit.x,
+                                    cy1: parent.y,
+                                    cx2: commit.x,
+                                    cy2: parent.y,
+                                    cx: parent.x,
+                                    cy: parent.y,
+                                })
+                            }else{
+                                // Half Down, Half left
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y+(0.5*this.state.INTERVAL_Y)
+                                })
+
+                                // Half Left, Half Down
+                                parentPaths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: commit.y+this.state.INTERVAL_Y
+                                })
+
+                                // Down straight
+                                parentPaths[color].push({
+                                    mx: parent.x,
+                                    my: commit.y+this.state.INTERVAL_Y,
+                                    cx1: parent.x,
+                                    cy1: commit.y+this.state.INTERVAL_Y,
+                                    cx2: parent.x,
+                                    cy2: commit.y+this.state.INTERVAL_Y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            }
+                        }
+                        // Far left
+                        else{
+                            if(parent_alone){
+                                // // Down straight
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y,
+                                    cx2: commit.x,
+                                    cy2: parent.y-this.state.INTERVAL_Y,
+                                    cx: commit.x,
+                                    cy: parent.y-this.state.INTERVAL_Y,
+                                })
+                                // Down, Left
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: parent.y-this.state.INTERVAL_Y,
+                                    cx1: commit.x,
+                                    cy1: parent.y,
+                                    cx2: commit.x,
+                                    cy2: parent.y,
+                                    cx: commit.x-this.state.INTERVAL_X,
+                                    cy: parent.y
+                                })
+                                // Left Straight
+                                parentPaths[color].push({
+                                    mx: commit.x-this.state.INTERVAL_X,
+                                    my: parent.y,
+                                    cx1: commit.x-this.state.INTERVAL_X,
+                                    cy1: parent.y,
+                                    cx2: commit.x-this.state.INTERVAL_X,
+                                    cy2: parent.y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            }else{
+                                // Half down, Half left
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y+(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Left straight
+                                parentPaths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx1: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y+(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Half left, Half down
+                                parentPaths[color].push({
+                                    mx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    my: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: commit.y+this.state.INTERVAL_Y
+                                })
+                                // Down straight
+                                parentPaths[color].push({
+                                    mx: parent.x,
+                                    my: commit.y+this.state.INTERVAL_Y,
+                                    cx1: parent.x,
+                                    cy1: commit.y+this.state.INTERVAL_Y,
+                                    cx2: parent.x,
+                                    cy2: commit.y+this.state.INTERVAL_Y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            }
+                        }
+
+                    }
+                }
+                // Parent is above
+                else{
+                    // Check parent for a connection to its left
+                    let parent_alone = true;
+                    for(let i=0; i<commit.parents.length; i++){
+                        if(commit.parents[i].y === commit.y){
+                            parent_alone = false;
+                            break;
+                        }
+                    }
+                    // Immediate above
+                    if(parent.y === (commit.y-this.state.INTERVAL_Y)){
+                        // Immediate left
+                        if(parent.x+this.state.INTERVAL_X+(2*this.state.NODE_RADIUS) === commit.x){
+                            if(parent_alone){
+                                // Left Up
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: parent.x,
+                                    cy1: commit.y,
+                                    cx2: parent.x,
+                                    cy2: commit.y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            }else{
+                                // Half up, Half left
+                                parentPaths[color].push({
+                                    mx: commit.x, 
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y-(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Half left, Half up
+                                parentPaths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: parent.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: parent.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            }
+                        }
+                        // Far left
+                        else{
+                             if(parent_alone){
+                                // Left straight
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y,
+                                    cx2: parent.x+this.state.INTERVAL_X,
+                                    cy2: commit.y,
+                                    cx: parent.x+this.state.INTERVAL_X,
+                                    cy: commit.y
+                                })
+                                // Left Up
+                                parentPaths[color].push({
+                                    mx: parent.x+this.state.INTERVAL_X,
+                                    my: commit.y,
+                                    cx1: parent.x,
+                                    cy1: commit.y,
+                                    cx2: parent.x,
+                                    cy2: commit.y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                                
+                            }else{
+                                // Half up, Half left
+                                parentPaths[color].push({
+                                    mx: commit.x, 
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y-(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Left straight
+                                parentPaths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx1: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    cy: parent.y+(0.5*this.state.INTERVAL_Y),
+                                })
+                                // Half left, Half up
+                                parentPaths[color].push({
+                                    mx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    my: parent.y+(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: parent.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: parent.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            }
+                        }
+                    }
+                    // Far above
+                    else{
+                        // Immediate left
+                        if(parent.x == (commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
+                            if(parent_alone){
+                                // Left up
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: parent.x,
+                                    cy1: commit.y,
+                                    cx2: parent.x,
+                                    cy2: commit.y,
+                                    cx: parent.x,
+                                    cy: commit.y-this.state.INTERVAL_Y
+                                })
+
+                                // Up straight
+                                parentPaths[color].push({
+                                    mx: parent.x,
+                                    my: commit.y-this.state.INTERVAL_Y,
+                                    cx1: parent.x,
+                                    cy1: commit.y-this.state.INTERVAL_Y,
+                                    cx2: parent.x,
+                                    cy2: parent.y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })                                
+                            }else{
+                                // Half up, Half left
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y-(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Half left, Half up
+                                parentPaths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: commit.y-this.state.INTERVAL_Y
+                                })
+                                // Up straight
+                                parentPaths[color].push({
+                                    mx: parent.x,
+                                    my: commit.y-this.state.INTERVAL_Y,
+                                    cx1: parent.x,
+                                    cy1: commit.y-this.state.INTERVAL_Y,
+                                    cx2: parent.x,
+                                    cy2: parent.y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            }
+                        }
+                        // Far left
+                        else{
+                            if(parent_alone){
+                                // Left straight
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y,
+                                    cx2: parent.x+this.state.INTERVAL_X,
+                                    cy2: commit.y,
+                                    cx: parent.x+this.state.INTERVAL_X,
+                                    cy: commit.y
+                                })
+                                // Left, up
+                                parentPaths[color].push({
+                                    mx: parent.x+this.state.INTERVAL_X,
+                                    my: commit.y,
+                                    cx1: parent.x,
+                                    cy1: commit.y,
+                                    cx2: parent.x,
+                                    cy2: commit.y,
+                                    cx: parent.x,
+                                    cy: commit.y-this.state.INTERVAL_Y
+                                })
+                                // Up straight
+                                parentPaths[color].push({
+                                    mx: parent.x,
+                                    my: commit.y-this.state.INTERVAL_Y,
+                                    cx1: parent.x,
+                                    cy1: commit.y-this.state.INTERVAL_Y,
+                                    cx2: parent.x,
+                                    cy2: parent.y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            }else{
+                                // Half up, Half left
+                                parentPaths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y-(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Left straight
+                                parentPaths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x+(0.5*this.state.INTERVAL_X),
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x+(0.5*this.state.INTERVAL_X),
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y-(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Half left, Half up
+                                parentPaths[color].push({
+                                    mx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    my: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: commit.y-this.state.INTERVAL_Y
+                                })
+                                // Up straight
+                                parentPaths[color].push({
+                                    mx: parent.x,
+                                    my: commit.y-this.state.INTERVAL_Y,
+                                    cx1: parent.x,
+                                    cy1: parent.y,
+                                    cx2: parent.x,
+                                    cy2: parent.y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })                                
+                            }
+                        }
+
+                    }
+                }
             }
-        }       
+
+        }
+
+        this.props.setCanvasDisplay("paths", parentPaths)
+        console.log(Object.keys(parentPaths))
+        let colorScale = d3.scaleLinear().domain([this.state.MASTER_Y, height-this.state.MARGINS.bottom])
+                            .interpolate(d3.interpolateHcl)
+                            .range([d3.rgb("#007AFF"), d3.rgb('#FFF500')])
 
         // Draw paths
-        let connections = networkGraph.selectAll('path')
-            .data(parentCoords)
+        let connections = networkGraph.selectAll('g')
+            .data(Object.entries(parentPaths))
             .enter()
-                .append('path')
-                .attr('class','connection')
-                .attr('fill', 'transparent')
-                .attr('d', (d) => 'M '+ d.x0 + ' ' + d.y0 + ' C ' + d.x1 + ' ' + d.y1 + ', ' + d.x2 + ' ' + d.y2 + ', ' + d.x + ' ' + d.y)
+                .append('g')
+                .selectAll('path')
+                .data((d) => d[1].map((paths) => ({ ...paths, color: d[0] })))
+                .enter()
+                    .append('path')
+                    .attr('data-color', (d) => d.color)
+                    .attr('class','connection')
+                    .style('fill', 'transparent')
+                    .style('stroke', (d) => colorScale(d.color))
+                    .attr('d', (d) => 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy)
 
         // Draw commit nodes
         let networkClass = this
@@ -285,9 +886,9 @@ class Network extends Component{
                 .attr('r', networkClass.state.NODE_RADIUS)
             .on('mouseover', function(d){
                 d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS+5)
-                commitBox.select('#cb-message').text(d.message)
+                commitBox.select('#cb-message').text(d.commit.message)
                 commitBox.transition().style('opacity', '1.0')
-                networkClass.extractIssues(d.message);
+                networkClass.extractIssues(d.commit.message);
                 defaultNetworkRight.style('visibility', 'hidden')
                 issueViewer.style('display', 'block')
             })
@@ -344,22 +945,6 @@ class Network extends Component{
         return(
             <div id='network-tab'>
                 <div id='network-left'>
-                    <div id='network-tools'>
-                        <div className='mr-15'>
-                            <span className='open-sans fs-12 mr-10'> Checkout: </span>
-                            <div className='button-tight bg-white bgh-gray open-sans fs-12'>
-                                <i className='fas fa-code-branch fs-11 mr-15'></i>
-                                <span className='mr-10'>Master</span>
-                            </div>
-                        </div>
-                        <div>
-                            <span className='open-sans fs-12 mr-10'> Mode: </span>
-                            <div className='button-tight bg-white bgh-gray open-sans fs-12'>
-                                <span className='mr-10'>Horizontal</span>
-                                <i className='fas fa-caret-down fs-16'></i>
-                            </div>
-                        </div>
-                    </div>
                     <div id='network-graph-wrapper'>
                         <svg id='network-graph'></svg>
                     </div>
@@ -369,7 +954,7 @@ class Network extends Component{
                         </div>
                     </div>
                 </div>
-
+                {/*
                 <div id='network-right' className='bg-gray'>
                     <div id='issue-viewer'>
                         <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>ISSUES</div>
@@ -383,9 +968,9 @@ class Network extends Component{
                         <div id='branches'>
                             <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>BRANCHES</div>
                             <div className='pd-lr-15 pd-ud-5'>
-                                {this.props.branches && this.props.branches.map((branch, i) => {
+                                {this.props.branches && Object.keys(this.props.branches).map((branchName, i) => {
                                     return(
-                                        <div key={i} className='open-sans fs-12 hover-underline'>{branch.name}</div>
+                                        <div key={i} className='open-sans fs-12 hover-underline'>{branchName}</div>
                                     )
                                 })}
                             </div>
@@ -401,45 +986,6 @@ class Network extends Component{
                             </div>
                         </div>
                     </div>
-                </div>
-                {/*<div id='sidenav'>
-                    <div id='title' className='baron c-2 fs-18 pd-lr-15 pd-ud-15'>VISION</div>
-                    <div id='repo-user' className='florence bold fs-13 pd-lr-15 pd-ud-15'>
-                        <i className='fab fa-github mr-10 c-dg'></i>
-                        <span className='c-dg'>{`${this.props.username}/`}</span> 
-                        <span className='c-3'>{this.props.reponame}</span>
-                    </div>
-                    <div id='search-bar-wrapper' className='pd-lr-10 pd-ud-15'>
-                        <div id='search-bar' className='pd-lr-15'>
-                            <input id='search-input' 
-                                className='loves bold fs-12'
-                                type='text'
-                                spellCheck='false'
-                                placeholder='Jump to...'
-                            />
-                            <i className='fas fa-search-location c-dg'></i>
-                        </div>
-                    </div>
-                    <div id='branches'>
-                        <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>BRANCHES</div>
-                        <div className='pd-lr-15 pd-ud-5'>
-                            {this.props.branches && this.props.branches.map((branch, i) => {
-                                return(
-                                    <div key={i} className='open-sans fs-12 hover-underline'>{branch.name}</div>
-                                )
-                            })}
-                        </div>
-                    </div>
-                    <div id='tags' className='pd-ud-15'>
-                        <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>TAGS</div>
-                        <div className='pd-lr-15 pd-ud-5'>
-                            {this.props.tags && this.props.tags.map((tag, i) => {
-                                return(
-                                    <div key={i} className='open-sans fs-12 hover-underline'>{tag.name}</div>
-                                )
-                            })}
-                        </div>
-                    </div>
                 </div>*/}
             </div>
         )
@@ -451,20 +997,17 @@ function mapStateToProps(state){
     return {
         username: state.repo.data.owner,
         reponame: state.repo.data.name,
-        master_oid: state.repo.data.master_oid,
+        master_sha: state.repo.data.master_sha,
         branches: state.branches.data.branches,
         commits: state.commits.data.commits,
-        issues: state.issues.data.issues ? state.issues.data.issues.graph : null,
-        fetching: state.branches.fetching,
-        fetched: state.branches.fetched,
-        errors: state.branches.errors
+        issues: state.issues.data.issues ? state.issues.data.issues.graph : null
     }
 }
 
 function mapDispatchToProps(dispatch){
     return {
         fetchIssue: async (owner, name, issueNumber) => await dispatch(fetchIssue(owner, name, issueNumber)),
-        fetchCommits: async (owner, name, branches) => await dispatch(fetchCommits(owner, name, branches)),
+        fetchCommits: async (owner, name, type, fetchPoint) => await dispatch(fetchCommits(owner, name, type, fetchPoint)),
         updateCommits: (commits) => dispatch(updateCommits(commits)),
         setCanvasDisplay: (field, value) => dispatch(setCanvasDisplay(field, value))
     }

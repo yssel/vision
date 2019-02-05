@@ -24,96 +24,85 @@ async function fetchInitCommit(user, repo){
 	return initCommitDate
 }
 
-async function fetchBranchCommits(username, reponame, branch, cursor=null){
-	const commitsFetch = authenticate().next().value
+async function fetchFrom(dispatch, user, repo, type, point){
+	let link;
+	let response;
 
-	let query = `
-	query($owner:String!, $name:String!, $branch: String!, $endCursor:String) {
-	  repository(owner: $owner, name: $name) {
-			ref(qualifiedName: $branch,) {
-				target{
-					...on Commit {
-						history(first: 5, after: $endCursor){
-				            edges{
-				              node{
-				                id
-								oid
-								message
-								author{
-									name
-									avatarUrl
-								}
-								committedDate
-								url
-								additions
-								deletions
-								parents(first: 2){
-									edges{
-										node{
-											oid
-										}
-									}
-								}
-				              }
-				            }
-				            pageInfo{
-				              hasNextPage
-				              endCursor
-				            }
-				        }
-					}
-				}
-			}	
-		}
-	}
-	`
-
-	let variables = {
-		owner: username,
-		name: reponame,
-		branch: branch,
-		endCursor: cursor
-	}
-
-	let response = await commitsFetch({ query, variables })
-	return response
-}
-
-async function fetchFromBranch(dispatch, username, reponame, branch){
-	let commits = []
 	try{
-		let fetching = true
-		let success = true
-		let branchCursor = null
-		while(success & fetching){
-			let response = await fetchBranchCommits(username, reponame, branch, branchCursor);
-			if(!response.errors){
-				commits = commits.concat(response.data.repository.ref.target.history.edges.map((commit) => commit.node))
-				if(!response.data.repository.ref.target.history.pageInfo.hasNextPage) 
-					fetching = false
-				else
-					branchCursor = response.data.repository.ref.target.history.pageInfo.endCursor
-			}else{
-				success = false
-				fetching = false
-				dispatch({ 
-					type: "FETCH_COMMITS_REJECTED",
-					payload: {
-						errors: response.errors
-					} 
-				})
+		// Get commit HASH of point (branch/tag/commit)
+		// ------------------
+		let hash = null
+		switch(type){
+			case 'BRANCH':{
+				link = `https://api.github.com/repos/${user}/${repo}/commits?sha=${point}&per_page=1`;
+				response = await authenticateRest(link, true);
+				hash = response[0].sha
+				break;
+			}
+
+			case 'TAG': {
+				link = `https://api.github.com/repos/${user}/${repo}/git/refs/tags/${point}`;
+				response = await authenticateRest(link,true);
+				if(response.object.type === 'tag'){
+					hash = response.object.sha;
+					link = `https://api.github.com/repos/${user}/${repo}/git/tags/${hash}`;
+					response = await authenticateRest(link, true);
+					hash = response.object.sha
+				}else{
+					hash = response.object.sha
+				}
+			}
+
+			case 'COMMIT': {
+				hash = point
 			}
 		}
 
-		if(success){
-			// Return commits
-			dispatch({ 
-				type: "FETCH_COMMITS_FULFILLED",
-				payload: {
-					commits
-				} 
-			})
+		// Get init commit of repo for comparison
+		// ------------------
+		link = `https://api.github.com/repos/${user}/${repo}/commits?per_page=1`
+		// fetch header 
+		response = await authenticateRest(link)
+		let headerLink = response.headers.get('Link')
+		// Parse link to get last page
+		let lastPage = headerLink.match(/&page=(\d*)>; rel="last"/)[1]
+		// fetch init commit
+		link = `https://api.github.com/repos/${user}/${repo}/commits?per_page=1&page=${lastPage}`
+		let initCommit = await authenticateRest(link, true)
+		initCommit = initCommit[0]
+
+		// Compare 1st commit...point &&
+		//    fetch the 1st batch of commits in between
+		// ------------------
+		link = `https://api.github.com/repos/${user}/${repo}/compare/${initCommit.sha}...${hash}`;
+		response = await authenticateRest(link, true);
+
+		let commits = response.commits.reverse();
+		// 1st batch is complete
+		if(response.total_commits == commits.length){
+			// Add the base commit at the end to complete commits
+			commits = commits.concat(response.base_commit)
 		}
+		// 1st batch is INcomplete
+		else{
+			let lastDate = commits[commits.length-1].committer.date;
+			let totalCommits = response.total_commits + 1; // +1 for base commit
+			
+			while(commits.length < totalCommits){
+				link = `https://api.github.com/repos/${user}/${repo}/commits?sha=${hash}&per_page=100&&until=${lastDate}`
+				response = await authenticateRest(link, true);
+				lastDate = response[response.length - 1].commit.committer.date
+				commits = commits.concat(response.slice(1)); // don't include duplicate last commit
+			}
+		}
+
+		// Return commits
+		dispatch({ 
+			type: "FETCH_COMMITS_FULFILLED",
+			payload: {
+				commits
+			} 
+		})
 
 	}catch(err){
 		dispatch({ 
@@ -135,34 +124,33 @@ async function fetchRepoCommits(username, reponame, branchCursor = null, untilDa
 	      edges{
 	        node {
 	        name
-			id
 	        target {
 			# Fetch 100 Commits per branch
 	        ...on Commit {
 	        history(first: 100, until: $untilDate){
-					edges{
-						cursor
-						node{
-							id
-							oid
-							message
-							author{
-								name
-								avatarUrl
-							}
-							committedDate
-							url
-							additions
-							deletions
-							parents(first: 2){
-								edges{
-									node{
-										oid
-									}
+				edges{
+					node{
+						sha: oid
+						message
+						html_url: url
+						author {
+							name
+							avatarUrl
+						}
+						committer{
+							name
+							avatarUrl
+						}
+						committedDate
+						parents(first: 2){
+							edges{
+								node{
+									sha: oid
 								}
 							}
 						}
 					}
+				}
 	            }
 	            }
 	          }
@@ -186,7 +174,6 @@ async function fetchRepoCommits(username, reponame, branchCursor = null, untilDa
 	let response = await commitsFetch({ query, variables })
 	return response
 }
-
 
 async function fetchAllCommits(dispatch, username, reponame){
 	let firstCommitDate = await fetchInitCommit(username, reponame) 
@@ -231,11 +218,30 @@ async function fetchAllCommits(dispatch, username, reponame){
 
 				// Remove duplicates & sort latest to oldest
 				if(success){
-					fetched_commits = fetched_commits.map((commit) => commit.node)
-					fetched_commits = removeDuplicatesBy(commits => commits.oid, fetched_commits);
+					// Restructure commit object
+					fetched_commits = fetched_commits.map(
+						(commit) =>
+						{
+							return({
+								sha: commit.node.sha,
+								html_url: commit.node.html_url,
+								commit: {
+									author: commit.node.author,
+									committer: {
+										...commit.node.committer,
+										date: commit.node.committedDate,
+									},
+									message: commit.node.message,
+								},
+								parents: commit.node.parents.edges.map((parent) => parent.node)
+							})
+						}
+					)
+
+					fetched_commits = removeDuplicatesBy(commits => commits.sha, fetched_commits);
 					fetched_commits.sort(function(a, b) {
-						a = new Date(a.committedDate);
-						b = new Date(b.committedDate);
+						a = new Date(a.commit.committer.date);
+						b = new Date(b.commit.committer.date);
 						return a>b ? -1 : a<b ? 1 : 0;
 					});
 
@@ -247,7 +253,7 @@ async function fetchAllCommits(dispatch, username, reponame){
 						repoCommits = repoCommits.concat(fetched_commits.slice(1, 99))
 					}
 					// Get last date
-					let lastDate = repoCommits[repoCommits.length-1].committedDate
+					let lastDate = repoCommits[repoCommits.length-1].commit.committer.date
 					if(lastDate === firstCommitDate) {
 						// All commits fetched
 						fetching = false
@@ -288,7 +294,7 @@ async function fetchAllCommits(dispatch, username, reponame){
 	}
 }
 
-export function fetchCommits(username, reponame, mode='BRANCH', fetchFrom='master'){
+export function fetchCommits(username, reponame, mode='ALL', fetchPoint=null){
 	return async function (dispatch) {
 		dispatch({ type: "FETCH_COMMITS" })
 		switch (mode) {
@@ -296,7 +302,15 @@ export function fetchCommits(username, reponame, mode='BRANCH', fetchFrom='maste
 				await fetchAllCommits(dispatch, username, reponame)
 				break;
 			case 'BRANCH':
-				await fetchFromBranch(dispatch, username, reponame, fetchFrom)
+				await fetchFrom(dispatch, username, reponame, 'BRANCH', fetchPoint)
+				break;
+			case 'TAG':
+				await fetchFrom(dispatch, username, reponame, 'TAG', fetchPoint)
+				break;
+			case 'COMMIT':
+				await fetchFrom(dispatch, username, reponame, 'COMMIT', fetchPoint)
+				break;
+			default:
 				break;
 		}
 	}
