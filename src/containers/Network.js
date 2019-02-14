@@ -64,7 +64,9 @@ class Network extends Component{
     }
 
     async getFiles(sha, index){
-        await this.props.fetchFiles(this.props.username, this.props.reponame, sha, index);
+        if(!this.props.files || !this.props.files[index]){
+            await this.props.fetchFiles(this.props.username, this.props.reponame, sha, index);
+        }
         this.setState({ files_viewed: this.props.files[index]})
 
     }
@@ -983,7 +985,7 @@ class Network extends Component{
                                     <div id='files-changed'>
                                         {files_viewed && files_viewed.map((file, i) => {
                                             return(
-                                                <div className='file'>
+                                                <div key={i} className='file'>
                                                     <div className='filename'>{file.filename}</div>
                                                     <div className='status'>{file.status}</div>
                                                     <div className='changes'>{file.changes}</div>

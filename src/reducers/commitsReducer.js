@@ -1,5 +1,8 @@
 export default function commitsReducer(state = {
-	data: {},
+	data: {
+		commits: null,
+		files: null
+	},
 	fetching: false,
 	fetched: false,
 	errors: null
@@ -26,6 +29,7 @@ export default function commitsReducer(state = {
 				fetching: false,
 				fetched: true,
 				data: {
+					...state.data,
 					commits: action.payload.commits
 				}
 			}
@@ -68,6 +72,7 @@ export default function commitsReducer(state = {
 			return {
 				...state,
 				data: {
+					...state.data,
 					commits: action.payload.commits
 				}
 			}
