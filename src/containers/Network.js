@@ -1,6 +1,6 @@
 import React, { Component} from 'react';
 import { connect } from 'react-redux';
-import { fetchCommits, updateCommits } from '../actions/commitsActions'
+import { fetchCommits, updateCommits, fetchFiles } from '../actions/commitsActions'
 import { setCanvasDisplay } from '../actions/uiActions'
 import { fetchIssue } from '../actions/issuesActions'
 
@@ -14,7 +14,7 @@ class Network extends Component{
         this.state = {
             paths: null,
             checkout: 'ALL',
-            checkout_from: null,
+            checkout_from: 'master',
             MAX_WIDTH: window.innerWidth*0.95,
             GRAPH_X: 0,
             GRAPH_Y: 0,
@@ -26,12 +26,14 @@ class Network extends Component{
             MIN_HEIGHT: window.innerHeight*0.5,
             MIN_WIDTH: 1000,
             issues_viewed: [],
+            commit_viewed: null,
+            files_viewed: null,
             Y_X: {} //keeps track of nearest X (node) per Y (row)
         }
 
         this.getData = this.getData.bind(this);
         this.extractIssues = this.extractIssues.bind(this);
-        this.curveCoords = this.curveCoords.bind(this);
+        this.getFiles = this.getFiles.bind(this);
         this.drawNetwork = this.drawNetwork.bind(this);
     }
 
@@ -42,6 +44,8 @@ class Network extends Component{
     async getData(props){
         await props.fetchCommits(props.username, props.reponame, this.state.checkout, this.state.checkout_from)
         await this.drawNetwork();
+        await this.setState({ commit_viewed: this.props.commits[0] })
+        await this.extractIssues(this.props.commits[0].commit.message);
     }
 
     async extractIssues(message){
@@ -59,17 +63,10 @@ class Network extends Component{
         this.setState({ issues_viewed: issues })
     }
 
-    curveCoords(mx, my, cx1, cy1, cx2, cy2, cx, cy){
-        return (
-            {
-                mx,
-                my,
-                cx1,
-                cy2,
-                cx,
-                cy
-            }
-        )
+    async getFiles(sha, index){
+        await this.props.fetchFiles(this.props.username, this.props.reponame, sha, index);
+        this.setState({ files_viewed: this.props.files[index]})
+
     }
 
     drawNetwork(){
@@ -284,8 +281,10 @@ class Network extends Component{
             .attr('width', MAX_WIDTH)
             .attr('height', height) // Navbar size is 60
             .attr('focusable', false)
+
+        let screenWidth = width > MAX_WIDTH ? (MAX_WIDTH - width) : 0;
         let networkGraph = canvas.append('g')
-            .attr('transform', 'translate(' + (MAX_WIDTH - width) + ',0)')
+            .attr('transform', 'translate(' + (screenWidth) + ',0)')
 
         // Parents paths:
         let parentPaths = {}
@@ -851,7 +850,6 @@ class Network extends Component{
         }
 
         this.props.setCanvasDisplay("paths", parentPaths)
-        console.log(Object.keys(parentPaths))
         let colorScale = d3.scaleLinear().domain([this.state.MASTER_Y, height-this.state.MARGINS.bottom])
                             .interpolate(d3.interpolateHcl)
                             .range([d3.rgb("#007AFF"), d3.rgb('#FFF500')])
@@ -870,7 +868,7 @@ class Network extends Component{
                     .style('fill', 'transparent')
                     .style('stroke', (d) => colorScale(d.color))
                     .attr('d', (d) => 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy)
-
+        
         // Draw commit nodes
         let networkClass = this
         let commitBox = d3.select('#commit-box')
@@ -885,18 +883,17 @@ class Network extends Component{
                 .attr('cy', (d) => d.y)
                 .attr('r', networkClass.state.NODE_RADIUS)
             .on('mouseover', function(d){
+                networkClass.setState({ commit_viewed: d })
                 d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS+5)
-                commitBox.select('#cb-message').text(d.commit.message)
                 commitBox.transition().style('opacity', '1.0')
                 networkClass.extractIssues(d.commit.message);
-                defaultNetworkRight.style('visibility', 'hidden')
-                issueViewer.style('display', 'block')
+                networkClass.getFiles(d.sha, d.index);
+                issueViewer.style('display', 'inline-block');
             })
             .on('mouseout', function(){
                 d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS)
-                commitBox.transition().style('opacity', '0.0')
+                // commitBox.transition().style('opacity', '0.0')
                 issueViewer.style('display', 'none')
-                defaultNetworkRight.style('visibility', 'visible')
             })
 
         canvas.on('mouseenter', function(){
@@ -915,23 +912,23 @@ class Network extends Component{
                 // check keycode
                 switch (d3.event.key) {
                     case 'ArrowLeft': //left 
-                        x = MAX_WIDTH < width ? Math.min(x+100,0) : x
+                        x = MAX_WIDTH < width ? Math.min(x+180,0) : x
                         break;
                     case 'ArrowRight': // right
-                        x = MAX_WIDTH < width ? Math.max(MAX_WIDTH - width, x-100) : x
+                        x = MAX_WIDTH < width ? Math.max(MAX_WIDTH - width, x-180) : x
                         break;
                     case 'ArrowUp': // up
-                        y = window.innerHeight < height ? Math.max(window.innerHeight - height, y-100) : y
+                        y = window.innerHeight < height ? Math.max(window.innerHeight - height, y-180) : y
                         break;
                     case 'ArrowDown':
-                        y = window.innerHeight < height ? Math.min(y+100,0) : y
+                        y = window.innerHeight < height ? Math.min(y+180,0) : y
                         break;
                     default:
                         break;
                 }
                 // Transform graph
                 networkGraph.transition()
-                    .duration(500)
+                    .duration(350)
                     .attr('transform', 'translate('+(x < 0 ? x : (d3.event.key === 'ArrowLeft' ? 0 : MAX_WIDTH - width) )+','+y+')')
             }
         }).on("focus", function(){});
@@ -942,28 +939,80 @@ class Network extends Component{
     }
 
     render(){
+        const { 
+            issues_viewed, 
+            commit_viewed, 
+            checkout,
+            files_viewed 
+        } = this.state;
+
         return(
             <div id='network-tab'>
-                <div id='network-left'>
+                <div id='network-page'>
                     <div id='network-graph-wrapper'>
-                        <svg id='network-graph'></svg>
+                        <svg id='network-graph'></svg>  
                     </div>
                     <div id='commit-box-wrapper'>
                         <div id='commit-box'>
-                            <span id='cb-message'></span>
+                            <div id='commit'>
+                                {commit_viewed &&
+                                <div className='wrapper'>
+                                    <div id='commit-details'>
+                                        {<div id='commit-author-img'>
+                                            <img src={commit_viewed.author ? commit_viewed.author.avatar_url : commit_viewed.commit.author.avatarUrl} alt=''/>
+                                        </div>}
+                                        <div id='commit-text'>
+                                            <div id='commit-info'>
+                                                <span id='commit-author' className='mr-5'>{commit_viewed.author ? commit_viewed.commit.author.name : commit_viewed.commit.author.user.name}</span>
+                                                <span id='commit-username' className='mr-15'>{`@${commit_viewed.author ? commit_viewed.author.login : commit_viewed.commit.author.name.replace(/\s/g, '')}`}</span>
+                                                <span id='commit-date'>{`on ${new Date(commit_viewed.commit.committer.date).toDateString()}`}</span>
+                                            </div>
+                                            <div id='commit-message'>
+                                                {commit_viewed.commit.message}
+                                            </div>
+                                            <div id='commit-desc'>
+                                                {commit_viewed.commit.message}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className='files-changed header'>FILES CHANGED</div>
+                                    <div className='files status'>Status</div>
+                                    <div className='files label'>Changes</div>
+                                    <div className='files label'>Additions</div>
+                                    <div className='files label'>Deletions</div>
+                                    <div id='files-changed'>
+                                        {files_viewed && files_viewed.map((file, i) => {
+                                            return(
+                                                <div className='file'>
+                                                    <div className='filename'>{file.filename}</div>
+                                                    <div className='status'>{file.status}</div>
+                                                    <div className='changes'>{file.changes}</div>
+                                                    <div className='additions'>{file.additions}</div>
+                                                    <div className='deletions'>{file.deletions}</div>
+                                                </div>
+                                            )
+                                        })
+                                        }
+                                    </div>
+                                </div>
+                                }
+                            </div>
+                            <div id='commit-issues'>
+                                <div className='header'>MODULES</div>
+                                <div id='commit-issues-wrapper'>
+                                {issues_viewed && issues_viewed.map((issue, i) => {
+                                    return(
+                                        <div key={i} className='issue open-sans fs-12'>{issue.title}</div>
+                                    )
+                                })}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 {/*
                 <div id='network-right' className='bg-gray'>
-                    <div id='issue-viewer'>
-                        <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>ISSUES</div>
-                        {this.state.issues_viewed && this.state.issues_viewed.map((issue, i) => {
-                            return(
-                                <div key={i} className='open-sans fs-12'>{issue.title}</div>
-                            )
-                        })}
-                    </div>
+                    
                     <div id='default-network-right'>
                         <div id='branches'>
                             <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>BRANCHES</div>
@@ -1000,12 +1049,14 @@ function mapStateToProps(state){
         master_sha: state.repo.data.master_sha,
         branches: state.branches.data.branches,
         commits: state.commits.data.commits,
+        files: state.commits.data.files,
         issues: state.issues.data.issues ? state.issues.data.issues.graph : null
     }
 }
 
 function mapDispatchToProps(dispatch){
     return {
+        fetchFiles: async (owner, name, sha, index) => await dispatch(fetchFiles(owner, name, sha, index)),
         fetchIssue: async (owner, name, issueNumber) => await dispatch(fetchIssue(owner, name, issueNumber)),
         fetchCommits: async (owner, name, type, fetchPoint) => await dispatch(fetchCommits(owner, name, type, fetchPoint)),
         updateCommits: (commits) => dispatch(updateCommits(commits)),

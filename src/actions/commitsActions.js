@@ -9,6 +9,12 @@ function removeDuplicatesBy(keyFn, array) {
   });
 }
 
+async function fetchFilesReq(user, repo, sha){
+	let link = `https://api.github.com/repos/${user}/${repo}/commits/${sha}`;
+	let response = await authenticateRest(link, true);
+	return response.files;
+}
+
 async function fetchInitCommit(user, repo){
 	let link = `https://api.github.com/repos/${user}/${repo}/commits?per_page=1`
 	// fetch header 
@@ -134,10 +140,12 @@ async function fetchRepoCommits(username, reponame, branchCursor = null, untilDa
 						message
 						html_url: url
 						author {
+							user { name }
 							name
 							avatarUrl
 						}
 						committer{
+							user { name }
 							name
 							avatarUrl
 						}
@@ -325,6 +333,41 @@ export function updateCommits(commits){
 
 export function fetchInitCommitDate(username, reponame){
 	return async function (dispatch){
+
+	}
+}
+
+export function fetchFiles(user, repo, sha, index){
+	return async function (dispatch){
+		dispatch({ type: 'FETCH_COMMIT_FILES'})
+
+		try{
+			let response = await fetchFilesReq(user, repo, sha)
+			if(!response.errors)
+				dispatch({
+					type: 'FETCH_COMMIT_FILES_FULFILLED',
+					payload: {
+						index,
+						files: response
+					}
+				})
+			else{
+				dispatch({ 
+					type: "FETCH_COMMIT_FILES_REJECTED",
+					payload: {
+						errors: response.errors
+					} 
+				})
+			}
+
+		}catch(err){
+			dispatch({ 
+				type: "FETCH_COMMIT_FILES_REJECTED",
+				payload: {
+					errors: err
+				} 
+			})
+		}
 
 	}
 }

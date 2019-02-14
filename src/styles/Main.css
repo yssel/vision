@@ -1,11 +1,12 @@
-@import url('https://fonts.googleapis.com/css?family=Arvo|Josefin+Sans|Montserrat|Roboto+Slab');
-
 :root{
 	--bar-height: 40px;
+	--sidenav-width: 5vw;
+	--box-shadow: 0 15px 35px 0 rgba(42,51,83,.12),0 5px 15px rgba(0,0,0,.06);
+	--box-shadow-light: 0 0px 10px 0 rgba(42,51,83,.03),0 5px 15px rgba(0,0,0,.03);
 }
 
 #sidenav{
-	width: 5vw;
+	width: var(--sidenav-width);
 	position: relative;
 }
 
@@ -34,16 +35,13 @@
 	color: black;
 	line-height: 7vh;
 	font-weight: 100;
+	font-size: 0.9em;
 }
-/*
-.nav-tab.burger{
-	margin-top: 20px;
-	margin-bottom: 7vh;
-}
-*/
+
 #sidenav .active div{
+	font-size: 1.1em;
 	font-weight: 800;
-	color: var(--color-1);
+	color: var(--color-4);
 	font-family: 'lemonmilk';
 	letter-spacing: 2px;
 }
@@ -66,9 +64,9 @@
 }
 
 #page{
-	left: 5vw;
+	left: var(--sidenav-width);
 	position: fixed;
-	width: 95vw;
+	width: calc(100vw - var(--sidenav-width));
 	height: 100vh;
 	display: inline-block;
 }

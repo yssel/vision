@@ -6,7 +6,7 @@
 }
 
 #network-graph-wrapper{
-	width: 95vw;
+	width: calc(100vw - var(--sidenav-width));
 	height: calc(var(--network-height) - var(--bar-height));
 	background: white;
 	display: table-cell;
@@ -34,10 +34,6 @@
 	/*visibility: hidden;*/
 }
 
-#issue-viewer{
-	display: none;
-}
-
 #network-tools{
 	padding-left: 2vw;
 	padding-right: 2vw;
@@ -63,29 +59,185 @@
 }
 
 .connection{
-	stroke-width: 3px;
+	stroke-width: 2.25px;
 	/*fill: transparent;*/
+}
+
+.connection-border{
+	stroke-width: 3px;
 }
 
 #commit-box-wrapper{
 	border-top: 0.5px #cacaca solid;
+	border-right: 0.5px #cacaca solid;
 	opacity: 1;
 	display: inline-block;
 	width: 95vw;
 	height: calc(100vh - var(--network-height));
-	background: #faf9f9;
+	background: var(--color-lb);
 	z-index: 99;
+	/*overflow-y: scroll;*/
 }
 
 #commit-box{
-	padding: 20px;
+	position: relative;
 }
 
-#cb-message{
-	color: #1d2323;
-	font-family: "Open Sans";
-	/*font-weight: bold;*/
+#commit, #commit-issues{
+	display: inline-block;
+	position: absolute;
+	height: calc(100vh - var(--network-height))
 }
+#commit{
+	left: 5vw;
+	width: calc(50% - 5vw);
+}
+
+#commit .wrapper{
+	width: 100%;
+	height: calc(100% - 30px);
+	padding-top: 15px;
+	padding-bottom: 15px;
+}
+
+
+#commit-issues{
+	right: 5vw;
+	width: calc(45% - 5vw);
+}
+
+#commit-box .header{
+	font-family: 'Poppins';
+	font-weight: 600;
+	font-size: 12px;
+	padding-bottom: 5px;
+	padding-top: 10px;
+	color: var(--color-dg);
+	display: inline-block;
+}
+
+#commit-details{
+	background: white;
+	padding: 10px;
+	font-size: 12px;
+	border-radius: 4px;
+	border: 0.5px solid #cacaca;
+	box-shadow: var(--box-shadow-light);
+	position: relative;
+	/*height: 50px;*/
+	width: calc(100% - 35px);
+}
+
+#commit-details>div{
+	display: inline-block;
+}
+
+#commit-author-img{
+	position: absolute;
+	width: 50px;
+	height: 50px;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+#commit-author-img img{
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+#commit-text{
+	font-family: 'Source Sans Pro';
+	font-weight: 500;
+	font-size: 12px;
+	padding-left: 60px;
+	top: 10px;
+	min-height: 50px;
+	max-height: 62px;
+	/*width: calc(80% - 78px);*/
+}
+
+#commit-author{
+	color: var(--color-1);
+	font-weight: 700;
+}
+
+#commit-username{
+	font-weight: 600;
+	color: var(--color-2);
+}
+
+#commit-message{
+	/*color: #1d2323;*/
+	/*font-family: "Open Sans";*/
+	font-weight: 600;
+	/*font-size: 12px;*/
+	max-height: 31px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	/*font-size: 1px;*/
+}
+
+#commit-date{
+	color: var(--color-2);
+}
+
+#files-changed{
+	height: calc(100% - 110px);
+	/*background: blue;*/
+	overflow-y: scroll;
+	padding-right: 8px;
+}
+#files-changed::-webkit-scrollbar-track{
+	border-radius: 10px;
+	background-color: var(--color-lb);
+}
+
+#files-changed::-webkit-scrollbar{
+	width: 7px;
+	background-color: var(--color-lb);
+}
+
+#files-changed::-webkit-scrollbar-thumb{
+	border-radius: 10px;
+	background: #d9d9d9;
+}
+
+.file div{ display: inline-block; }
+.files{ 
+	display: inline-block; 
+	font-family: 'Source Sans Pro';
+	font-size: 10px;
+	font-weight: 600;
+	margin-left: -8px;
+}
+.file .filename, .files-changed.header { width: 50%; }
+.file .status, .files.status{ width: 17% }
+.file .changes, .file .additions, .file .deletions, .files.label{
+	width: 11%;
+	text-align: center;
+}
+.file{ 
+	background: white;
+	margin-bottom: 5px;
+	font-size: 12px;
+	border-radius: 4px;
+	box-shadow: var(--box-shadow-light);
+	font-family: 'Source Sans Pro';
+	padding: 8px;
+	padding-left: 15px;
+	padding-right: 15px;
+	border: 0.5px solid rgba(202, 202, 202, 0.4);
+}
+
+.issue{
+	width: calc(50%);
+	background: white;
+	padding: 10px;
+	border-radius: 4px;
+	box-shadow: var(--box-shadow-light)
+}
+
 
 #sidenav .header {
 	background: #ebebeb
