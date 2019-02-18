@@ -39,7 +39,8 @@
 }
 
 #sidenav .active div{
-	font-size: 1.1em;
+	padding-left: 3px;
+	border-right: 3px solid var(--color-4);
 	font-weight: 800;
 	color: var(--color-4);
 	font-family: 'lemonmilk';
@@ -56,12 +57,17 @@
 	background: var(--color-1);
 	display: table-cell;
 	vertical-align: middle;
-	font-family: 'Josefin Sans'
+	font-family: 'Josefin Sans';
 }
 
 #repo-user{
+	text-a
 	width: 25%;
 }
+#repo-user #username{
+	margin-right: 2px;
+	color: var(--color-4);
+}	
 
 #page{
 	left: var(--sidenav-width);

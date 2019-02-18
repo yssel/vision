@@ -106,6 +106,16 @@
 	width: calc(45% - 5vw);
 }
 
+
+#commit-issues .wrapper{
+	width: 100%;
+	height: calc(100% - 30px);
+	padding-top: 15px;
+	padding-bottom: 15px;
+	position: relative;
+	/*height: calc(100% - 53px);*/
+}
+
 #commit-box .header{
 	font-family: 'Poppins';
 	font-weight: 600;
@@ -171,11 +181,16 @@
 	/*color: #1d2323;*/
 	/*font-family: "Open Sans";*/
 	font-weight: 600;
-	/*font-size: 12px;*/
+	font-size: 13px;
 	max-height: 31px;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	/*padding-top: 2px;*/
+	padding-bottom: 2px;
 	/*font-size: 1px;*/
+}
+#commit-desc{
+	font-size: 10px;
 }
 
 #commit-date{
@@ -183,14 +198,14 @@
 }
 
 #files-changed{
-	height: calc(100% - 110px);
+	max-height: calc(100% - 110px);
 	/*background: blue;*/
 	overflow-y: scroll;
 	padding-right: 8px;
 }
 #files-changed::-webkit-scrollbar-track{
 	border-radius: 10px;
-	background-color: var(--color-lb);
+	background-color: var(--color-3);
 }
 
 #files-changed::-webkit-scrollbar{
@@ -200,7 +215,7 @@
 
 #files-changed::-webkit-scrollbar-thumb{
 	border-radius: 10px;
-	background: #d9d9d9;
+	background: var(--color-2);
 }
 
 .file div{ display: inline-block; }
@@ -227,17 +242,161 @@
 	padding: 8px;
 	padding-left: 15px;
 	padding-right: 15px;
-	border: 0.5px solid rgba(202, 202, 202, 0.4);
+	border: 0.5px solid rgba(202, 202, 202, 0.5);
+}
+
+.issues{
+	position: absolute;
+	/*top: 0;*/
+	display: inline-block;
+	width: calc(50% - 10px);
+	height: 100%;
+	/*border-radius: 4px;*/
+	/*background: var(--color-lg);*/
+	margin-right: 10px;
+	/*box-shadow: var(--box-shadow-light);*/
+}
+
+.issues .title{
+	color: white;
+	font-family: 'Poppins';
+	font-weight: 600;
+	font-size: 12px;
+	border-radius: 4px;
+	box-shadow: var(--box-shadow-light);
+	padding: 8px;
+	padding-left: 15px;
+	padding-right: 15px; 
+	letter-spacing: 0.6px;
+}
+
+#doing .title{
+	background: linear-gradient(to right, var(--color-4), #4ab8b8);
+}
+
+#done{
+	left: 50%;
+}
+
+#done .title{
+	background: linear-gradient(to right, var(--color-1), #10316b);
+}
+
+.issue-empty{
+	font-family: 'Assistant';
+	font-size: 10px;
+	color: rgba(38, 37, 37, 0.25);
+	padding-top: 30px;
+	padding-bottom: 30px;
+	text-align: center;
+	/*background: var(--color-lg);*/
+	background: rgba(223, 226, 226, 0.6);
+	/*box-shadow: var(--box-shadow-light);*/
+	border-radius: 4px;
+	margin-top: 8px;
+	/*letter-spacing: 0.8px;*/
 }
 
 .issue{
-	width: calc(50%);
+	margin-top: 8px;
 	background: white;
-	padding: 10px;
 	border-radius: 4px;
-	box-shadow: var(--box-shadow-light)
+	box-shadow: var(--box-shadow-light);
+	font-family: 'Assistant';
+	font-size: 12px;
+	color: #141414;
+	border: 0.5px solid rgba(202, 202, 202, 0.5);
+	/*font-weight: 600;*/
 }
 
+.issue>.divider{
+	border-top: 0.5px solid rgba(202, 202, 202, 0.5);
+	/*padding-bottom: 10px;*/
+}
+
+.issue-info{
+	position: relative;
+	padding: 15px;
+}
+
+.issue-info>div{
+	display: inline-block;
+	/*position: absolute;*/
+}
+
+.issue-data{
+	width: 90%;
+}
+
+.issue-number{
+	/*width: calc(20% - 10px);*/
+	/*text-align: right;*/
+	text-decoration: none;
+	/*left:;*/
+	/*top: 10px;*/
+	position: absolute;
+	font-size: 14px;
+}
+.issue-number a{
+	text-decoration: none;
+	color: #dfe2e2;
+}
+
+.issue-title{
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.issue-milestone{
+	padding-top: 15px;
+	font-size: 0.95em;
+	/*font-family: 'Source Sans Pro';*/
+	color: #33313b;
+	/*font-weight: 600;*/
+
+}
+.issue-info i {
+	margin-right: 5px;
+}
+.issue-assignees{
+	background: var(--color-lg);
+	padding: 8px;
+	padding-right: 15px;
+	text-align: right;
+}
+.issue-assignee{
+	display: inline-block;
+	width: 25px;
+	height: 25px;
+	border-radius: 50%;
+	border: 2px solid var(--color-3);
+	overflow: hidden;
+	margin-right: 2px;
+}
+
+.issue-assignee img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.issue-labels{
+	/*font-weight: 600;*/
+	padding: 15px;
+	padding-top: 5px;
+	/*padding-bottom: 10px;*/
+}
+
+.issue-label{
+	font-size: 0.9em;
+	display: inline-block;
+	padding: 3px;
+	padding-bottom: 4px;
+	padding-left: 10px;
+	padding-right: 10px;
+	margin-right: 5px;
+	border-radius: 15px;
+}
 
 #sidenav .header {
 	background: #ebebeb

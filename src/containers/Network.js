@@ -31,6 +31,7 @@ class Network extends Component{
             Y_X: {} //keeps track of nearest X (node) per Y (row)
         }
 
+        this.getTextColor = this.getTextColor.bind(this);
         this.getData = this.getData.bind(this);
         this.extractIssues = this.extractIssues.bind(this);
         this.getFiles = this.getFiles.bind(this);
@@ -39,6 +40,19 @@ class Network extends Component{
 
     componentDidMount(){
         this.getData(this.props);
+    }
+
+    getTextColor(hex){
+        // Code snippet from https://stackoverflow.com/a/12043228
+
+        let rgb = parseInt(hex, 16);   // convert rrggbb to decimal
+        let r = (rgb >> 16) & 0xff;  // extract red
+        let g = (rgb >>  8) & 0xff;  // extract green
+        let b = (rgb >>  0) & 0xff;  // extract blue
+
+        let luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        if (luma < 128) return 'white'
+        else return 'black'
     }
 
     async getData(props){
@@ -1000,13 +1014,61 @@ class Network extends Component{
                                 }
                             </div>
                             <div id='commit-issues'>
-                                <div className='header'>MODULES</div>
-                                <div id='commit-issues-wrapper'>
-                                {issues_viewed && issues_viewed.map((issue, i) => {
-                                    return(
-                                        <div key={i} className='issue open-sans fs-12'>{issue.title}</div>
-                                    )
-                                })}
+                                <div className='wrapper'>
+                                    <div id='doing' className='issues'>
+                                        <div className='title'>IN PROGRESS</div>
+                                        {issues_viewed && issues_viewed.map((issue, i) => {
+                                            return(
+                                                <div key={i} className='issue'>
+                                                    <div className='issue-info'>
+                                                        <div className='issue-data'>
+                                                            <div className='issue-title'>{issue.title}</div>
+                                                            {issue.milestone && 
+                                                                <div className='issue-milestone'>
+                                                                    <i className="fas fa-flag"></i>
+                                                                    {issue.milestone.title}
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                        <div className='issue-number'>
+                                                            <a href={issue.html_url}>#{issue.number}</a>
+                                                        </div>
+                                                    </div>
+                                                    {issue.labels.length > 0 && <div className='issue-labels'>
+                                                        {issue.labels.map((label, i) => {
+                                                            return(
+                                                                <div className='issue-label' key={i} 
+                                                                    style={{ 
+                                                                        background: `#${label.color}`,
+                                                                        color: this.getTextColor(label.color)
+                                                                    }}>
+
+                                                                    {label.name}
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>}
+                                                    <div className='divider'></div>
+                                                    {issue.assignees.length > 0 && <div className='issue-assignees'>
+                                                        {issue.assignees.map((user, i) => {
+                                                            return(
+                                                                <div className='issue-assignee' key={i}>
+                                                                    <img src={user.avatar_url}/>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+
+                                    <div id='done' className='issues'>
+                                        <div className='title'>DONE</div>
+                                        <div className='issue-empty'>
+                                            NO ISSUES
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
