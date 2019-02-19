@@ -339,7 +339,8 @@
 }
 .issue-number a{
 	text-decoration: none;
-	color: #dfe2e2;
+	color: gray;
+	outline: none;
 }
 
 .issue-title{
@@ -362,6 +363,7 @@
 	background: var(--color-lg);
 	padding: 8px;
 	padding-right: 15px;
+	padding-left: 15px;
 	text-align: right;
 }
 .issue-assignee{

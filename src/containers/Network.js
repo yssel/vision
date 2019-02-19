@@ -63,18 +63,37 @@ class Network extends Component{
     }
 
     async extractIssues(message){
-        let numbers = message.match(/#\d+/g);
-        let issues = [];
+        // 'DONE' issues
         let n;
+        let done_issues = [];
+        let doing_issues = [];
+        let done = message.match(/((F|f)ix(es|ed)?|(C|c)lose(s|d)?|(R|r)esolve(s|d)?)\s#\d+/g)
+        if(done){
+            while((n = done.pop()) != null ){
+                n = Number(/#(\d+)/g.exec(n)[1]);
+                if(this.props.issues == null || this.props.issues[n] == null)
+                    await this.props.fetchIssue(this.props.username, this.props.reponame, n)
+                done_issues = [this.props.issues[n], ...done_issues]
+            }
+        }
+        // DOING issues
+        let doing = message.replace(/((F|f)ix(es|ed)?|(C|c)lose(s|d)?|(R|r)esolve(s|d)?)\s#\d+/g, '');
+        let numbers = doing.match(/#\d+/g);
         if(numbers){
             while((n = numbers.pop()) != null ) {
                 n = Number(n.match(/\d+/g)[0])
                 if(this.props.issues == null || this.props.issues[n] == null)
                     await this.props.fetchIssue(this.props.username, this.props.reponame, n)
-                issues = [this.props.issues[n], ...issues]
+                doing_issues = [this.props.issues[n], ...doing_issues]
             }
         }
-        this.setState({ issues_viewed: issues })
+
+        this.setState({ 
+            issues_viewed: {
+                done: done_issues,
+                doing: doing_issues
+            } 
+        })
     }
 
     async getFiles(sha, index){
@@ -1017,7 +1036,7 @@ class Network extends Component{
                                 <div className='wrapper'>
                                     <div id='doing' className='issues'>
                                         <div className='title'>IN PROGRESS</div>
-                                        {issues_viewed && issues_viewed.map((issue, i) => {
+                                        {issues_viewed.doing && issues_viewed.doing.map((issue, i) => {
                                             return(
                                                 <div key={i} className='issue'>
                                                     <div className='issue-info'>
@@ -1061,13 +1080,62 @@ class Network extends Component{
                                                 </div>
                                             )
                                         })}
+                                        {
+                                            (!issues_viewed.doing || issues_viewed.doing.length === 0) &&
+                                            <div className='issue-empty'></div>
+                                        }
                                     </div>
 
                                     <div id='done' className='issues'>
                                         <div className='title'>DONE</div>
-                                        <div className='issue-empty'>
-                                            NO ISSUES
-                                        </div>
+                                        {issues_viewed.done && issues_viewed.done.map((issue, i) => {
+                                            return(
+                                                <div key={i} className='issue'>
+                                                    <div className='issue-info'>
+                                                        <div className='issue-data'>
+                                                            <div className='issue-title'>{issue.title}</div>
+                                                            {issue.milestone && 
+                                                                <div className='issue-milestone'>
+                                                                    <i className="fas fa-flag"></i>
+                                                                    {issue.milestone.title}
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                        <div className='issue-number'>
+                                                            <a href={issue.html_url}>#{issue.number}</a>
+                                                        </div>
+                                                    </div>
+                                                    {issue.labels.length > 0 && <div className='issue-labels'>
+                                                        {issue.labels.map((label, i) => {
+                                                            return(
+                                                                <div className='issue-label' key={i} 
+                                                                    style={{ 
+                                                                        background: `#${label.color}`,
+                                                                        color: this.getTextColor(label.color)
+                                                                    }}>
+
+                                                                    {label.name}
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>}
+                                                    <div className='divider'></div>
+                                                    {issue.assignees.length > 0 && <div className='issue-assignees'>
+                                                        {issue.assignees.map((user, i) => {
+                                                            return(
+                                                                <div className='issue-assignee' key={i}>
+                                                                    <img src={user.avatar_url}/>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>}
+                                                </div>
+                                            )
+                                        })}
+                                        {
+                                            (!issues_viewed.done || issues_viewed.done.length === 0) &&
+                                            <div className='issue-empty'></div>
+                                        }
                                     </div>
                                 </div>
                             </div>
