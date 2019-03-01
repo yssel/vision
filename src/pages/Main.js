@@ -9,6 +9,8 @@ import { fetchTags } from '../actions/tagsActions'
 import Network from '../containers/Network';
 import Stats from '../containers/Stats';
 
+import SearchBox from '../components/SearchBox';
+
 import '../styles/Main.css';
 
 class Main extends Component {
@@ -16,14 +18,42 @@ class Main extends Component {
 		super(props);
 		const { params } = this.props.match;
 		const { username, reponame } = params;
+		this.state = {
+			checkout: 'ALL',
+            checkout_from: 'All',
+		}
+
 		this.fetchRepoData = this.fetchRepoData.bind(this)
 		this.fetchRepoData(username, reponame, props);
+	}
+
+	setSearchDatabase = () => {
+		let database = [{id: 0, type: 'ALL', name: 'All'}, {id: 1, type: 'BRANCH', name: this.props.master_name}]
+		database = database.concat(Object.keys(this.props.branches).map((branch, i) => { 
+			return {id: i+2, type: 'BRANCH', name: branch} 
+		}))
+		const length = database.length
+		database = database.concat(Object.keys(this.props.tags).map((tag, i) => { return {id: length+2+i, type: 'TAG', name: tag} }))
+		console.log(database)
+		this.setState({
+			database
+		})
 	}
 
 	async fetchRepoData(username, reponame, props) {
 		await props.fetchRepo(username, reponame);
 		await props.fetchBranches(username, reponame);
 		await props.fetchTags(username, reponame);
+		this.setSearchDatabase()
+	}
+
+	checkout = (result) => {
+		console.log('result', result)
+		this.setState({
+			network_id: result.id,
+			checkout: result.type,
+			checkout_from: result.name
+		})
 	}
 
 	render(){
@@ -80,13 +110,28 @@ class Main extends Component {
 							</span>
 							<span id='reponame' className='c-white bold fs-14'>{this.props.reponame}</span>
 						</div>
+						<div id='search'>
+						<div style={{paddingRight: 8, fontSize: 12, color: 'white'}}>Graph : </div>
+						<SearchBox 
+							id='search-box'
+							database={this.state.database}
+							onResultSelect={this.checkout}
+							resetOnFocus={true}
+							initValue={this.state.checkout_from}
+							master_name={this.props.master_name}
+						/>
+						</div>
 					</div>
 					<div id='main'>
 						{
 						this.props.username && 
 						<Switch>
-							<Route path='/:username/:reponame' exact component={Network}></Route>
-							<Route path='/:username/:reponame/stats' component={Stats}></Route>
+							<Route 
+								exact 
+								path='/:username/:reponame'
+								render={(props) => <Network {...props} key={this.state.network_id} checkout={this.state.checkout} checkout_from={this.state.checkout_from} />}
+							/>
+							<Route path='/:username/:reponame/stats' component={Stats}/>
 						</Switch>
 						}
 					</div>
@@ -101,7 +146,8 @@ function mapStateToProps(state) {
 		username: state.repo.data.owner,
 		reponame: state.repo.data.name,
 		branches: state.branches.data.branches,
-		tags: state.tags.data.tags
+		tags: state.tags.data.tags,
+		master_name: state.repo.data.master_name,
 	}
 }
 

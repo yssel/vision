@@ -13,8 +13,6 @@ class Network extends Component{
         // Initialize constants
         this.state = {
             paths: null,
-            checkout: 'ALL',
-            checkout_from: 'master',
             MAX_WIDTH: window.innerWidth*0.95,
             GRAPH_X: 0,
             GRAPH_Y: 0,
@@ -56,7 +54,7 @@ class Network extends Component{
     }
 
     async getData(props){
-        await props.fetchCommits(props.username, props.reponame, this.state.checkout, this.state.checkout_from)
+        await props.fetchCommits(props.username, props.reponame, props.checkout, props.checkout_from)
         await this.drawNetwork();
         await this.setState({ commit_viewed: this.props.commits[0] })
         await this.extractIssues(this.props.commits[0].commit.message);
@@ -977,7 +975,6 @@ class Network extends Component{
         const { 
             issues_viewed, 
             commit_viewed, 
-            checkout,
             files_viewed 
         } = this.state;
 
@@ -1082,7 +1079,12 @@ class Network extends Component{
                                         })}
                                         {
                                             (!issues_viewed.doing || issues_viewed.doing.length === 0) &&
-                                            <div className='issue-empty'></div>
+                                            <div className='issue-empty'>
+                                                {
+                                                    this.props.issue_fetching && 
+                                                    <i className="fas fa-circle-notch fa-spin"></i>
+                                                }
+                                            </div>
                                         }
                                     </div>
 
@@ -1134,7 +1136,12 @@ class Network extends Component{
                                         })}
                                         {
                                             (!issues_viewed.done || issues_viewed.done.length === 0) &&
-                                            <div className='issue-empty'></div>
+                                            <div className='issue-empty'>
+                                                {
+                                                    this.props.issue_fetching && 
+                                                    <i className="fas fa-circle-notch fa-spin"></i>
+                                                }
+                                            </div>
                                         }
                                     </div>
                                 </div>
@@ -1142,32 +1149,6 @@ class Network extends Component{
                         </div>
                     </div>
                 </div>
-                {/*
-                <div id='network-right' className='bg-gray'>
-                    
-                    <div id='default-network-right'>
-                        <div id='branches'>
-                            <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>BRANCHES</div>
-                            <div className='pd-lr-15 pd-ud-5'>
-                                {this.props.branches && Object.keys(this.props.branches).map((branchName, i) => {
-                                    return(
-                                        <div key={i} className='open-sans fs-12 hover-underline'>{branchName}</div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                        <div id='tags' className='pd-ud-15'>
-                            <div className='header bold florence ls-1 fs-12 m-ud-10 pd-lr-15'>TAGS</div>
-                            <div className='pd-lr-15 pd-ud-5'>
-                                {this.props.tags && this.props.tags.map((tag, i) => {
-                                    return(
-                                        <div key={i} className='open-sans fs-12 hover-underline'>{tag.name}</div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                </div>*/}
             </div>
         )
     }
@@ -1182,7 +1163,8 @@ function mapStateToProps(state){
         branches: state.branches.data.branches,
         commits: state.commits.data.commits,
         files: state.commits.data.files,
-        issues: state.issues.data.issues ? state.issues.data.issues.graph : null
+        issues: state.issues.data.issues ? state.issues.data.issues.graph : null,
+        issue_fetching: state.issues.fetching
     }
 }
 

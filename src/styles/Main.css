@@ -22,7 +22,7 @@
 #nav{
 	width: 100%;
 	position: absolute;
-	top: 14vh;
+	top: 10vh;
 }
 
 .nav-tab, #logout, #burger{
@@ -60,9 +60,12 @@
 	font-family: 'Josefin Sans';
 }
 
+#bar>div{
+	display: inline-block;
+}
+
 #repo-user{
-	text-a
-	width: 25%;
+	margin-right: 100px;
 }
 #repo-user #username{
 	margin-right: 2px;
@@ -76,4 +79,3 @@
 	height: 100vh;
 	display: inline-block;
 }
-
