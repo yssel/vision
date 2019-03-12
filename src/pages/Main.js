@@ -34,7 +34,7 @@ class Main extends Component {
 		}))
 		const length = database.length
 		database = database.concat(Object.keys(this.props.tags).map((tag, i) => { return {id: length+2+i, type: 'TAG', name: tag} }))
-		console.log(database)
+		
 		this.setState({
 			database
 		})

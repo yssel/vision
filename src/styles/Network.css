@@ -249,11 +249,12 @@
 	position: absolute;
 	/*top: 0;*/
 	display: inline-block;
-	width: calc(50% - 10px);
-	height: 100%;
+	width: calc(50% - 15px);
+	height: calc(100% - 30px);
 	/*border-radius: 4px;*/
 	/*background: var(--color-lg);*/
-	margin-right: 10px;
+	margin-right: 5px;
+	padding-right: 10px;
 	/*box-shadow: var(--box-shadow-light);*/
 }
 
@@ -311,12 +312,13 @@
 
 .issue>.divider{
 	border-top: 0.5px solid rgba(202, 202, 202, 0.5);
-	/*padding-bottom: 10px;*/
+	height: 0.5px;
 }
 
 .issue-info{
 	position: relative;
 	padding: 15px;
+	padding-bottom: 0;
 }
 
 .issue-info>div{
@@ -325,7 +327,7 @@
 }
 
 .issue-data{
-	width: 90%;
+	width: 100%;
 }
 
 .issue-number{
@@ -346,25 +348,28 @@
 .issue-title{
 	font-size: 14px;
 	font-weight: 600;
+	margin-bottom: 15px;
 }
 
 .issue-milestone{
-	padding-top: 15px;
-	font-size: 0.95em;
-	/*font-family: 'Source Sans Pro';*/
-	color: #33313b;
-	/*font-weight: 600;*/
-
+	border: 1px solid rgba(202,202,202,0.8);
+	background: rgba(202,202,202,0.4);
+	/*color: white;*/
+	font-weight: 800;
+	padding: 2px;
+	padding-left: 7px;
+	padding-right: 7px;
+	font-size: 0.9em;
+	border-radius: 15px;
 }
-.issue-info i {
-	margin-right: 5px;
+.issue-milestone i {
+	margin-right: 10px;
 }
 .issue-assignees{
-	background: var(--color-lg);
 	padding: 8px;
 	padding-right: 15px;
 	padding-left: 15px;
-	text-align: right;
+	/*text-align: right;*/
 }
 .issue-assignee{
 	display: inline-block;

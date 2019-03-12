@@ -13,7 +13,11 @@ class Network extends Component{
         // Initialize constants
         this.state = {
             paths: null,
+            MAX_HEIGHT: null,
             MAX_WIDTH: window.innerWidth*0.95,
+            TRANS_X: 0,
+            TRANS_Y: 0,
+            panning: false,
             GRAPH_X: 0,
             GRAPH_Y: 0,
             NODE_RADIUS: 5,
@@ -38,6 +42,7 @@ class Network extends Component{
 
     componentDidMount(){
         this.getData(this.props);
+        this.setState({ MAX_HEIGHT: document.getElementById('network-graph-wrapper').clientHeight })
     }
 
     getTextColor(hex){
@@ -104,6 +109,7 @@ class Network extends Component{
 
     drawNetwork(){
         let MAX_WIDTH = this.state.MAX_WIDTH;
+        let MAX_HEIGHT = this.state.MAX_HEIGHT
         let commits = this.props.commits.slice();
 
         // Compute canvas width
@@ -312,13 +318,38 @@ class Network extends Component{
         // Set up canvas
         let canvas = d3.select('#network-graph')
             .attr('width', MAX_WIDTH)
-            .attr('height', height) // Navbar size is 60
+            .attr('height', MAX_HEIGHT) // Navbar size is 60
             .attr('focusable', false)
 
-        let screenWidth = width > MAX_WIDTH ? (MAX_WIDTH - width) : 0;
-        let networkGraph = canvas.append('g')
-            .attr('transform', 'translate(' + (screenWidth) + ',0)')
 
+        let screenWidth = width > MAX_WIDTH ? (MAX_WIDTH - width) : 0;
+
+        let zoom = d3.zoom()
+                .scaleExtent([1, 1])
+                .translateExtent([[0,0], [width, height]])
+                .on('zoom', () => {
+                    let network = d3.select('#network-graph-group')
+                    // let translate = network.attr('transform').match(/.*translate\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\).*/)
+                    
+                    let t = d3.event.transform;
+                    let transform = `translate(${t.x},${t.y})`
+                    network.attr("transform", d3.event.transform);
+                })
+                
+        let zoomContainer = canvas.append('rect')
+            .attr('id', 'zoom-handler')
+            .attr('width', MAX_WIDTH)
+            .attr('height', MAX_HEIGHT)
+            .style('fill', 'none')
+            .style('pointer-events', 'all')
+
+        zoom.translateBy(zoomContainer, screenWidth, 0)
+        zoomContainer.call(zoom)
+        let initPan = d3.zoomTransform(d3.select('#zoom-handler').node())
+        let networkGraph = canvas.append('g')
+            .attr('id', 'network-graph-group')
+            .attr('transform', 'translate('+initPan.x+','+initPan.y+')')
+        
         // Parents paths:
         let parentPaths = {}
         let i,j
@@ -935,39 +966,54 @@ class Network extends Component{
 
         let panning = false
         canvas.on('keydown', function(){
-            if(!panning){
-                panning = true
-                // compute transform
-                let transform = networkGraph.attr('transform').match(/(-?\d+)\s*,\s*(-?\d+)/)
-                let x = Number(transform ? transform[1] : 0)
-                let y = Number(transform ? transform[2] : 0)
+            if(d3.event.key === 'ArrowLeft' || d3.event.key === 'ArrowRight' || d3.event.key === 'ArrowUp' || d3.event.key === 'ArrowDown'){
+                if(!networkClass.state.panning){
+                    networkClass.setState({ panning: true })
+                    // compute transform
+                    let network = d3.select('#network-graph-group')
+                    let transform = network.attr('transform').match(/.*translate\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\).*/)
+                    let x = Number(transform ? transform[1] : 0)
+                    let y = Number(transform ? transform[2] : 0)
 
-                // check keycode
-                switch (d3.event.key) {
-                    case 'ArrowLeft': //left 
-                        x = MAX_WIDTH < width ? Math.min(x+180,0) : x
-                        break;
-                    case 'ArrowRight': // right
-                        x = MAX_WIDTH < width ? Math.max(MAX_WIDTH - width, x-180) : x
-                        break;
-                    case 'ArrowUp': // up
-                        y = window.innerHeight < height ? Math.max(window.innerHeight - height, y-180) : y
-                        break;
-                    case 'ArrowDown':
-                        y = window.innerHeight < height ? Math.min(y+180,0) : y
-                        break;
-                    default:
-                        break;
+                    // check keycode
+                    switch (d3.event.key) {
+                        case 'ArrowLeft': //left 
+                            x = MAX_WIDTH < width ? Math.min(x+180,0) : x
+                            break;
+                        case 'ArrowRight': // right
+                            x = MAX_WIDTH < width ? Math.max(MAX_WIDTH - width, x-180) : x
+                            break;
+                        case 'ArrowUp': // up
+                            y = MAX_HEIGHT < height ? Math.min(y+180,0) : y
+                            break;
+                        case 'ArrowDown':
+                            y = MAX_HEIGHT < height ? Math.max(MAX_HEIGHT - height, y-180) : y
+                            break;
+                        default:
+                            break;
+                    }
+                    if(MAX_WIDTH < width) x = x <= 0 ? x : 0
+                    if(MAX_HEIGHT < height) y = y <= 0 ? y : 0
+                    // Transform graph
+                    network.transition()
+                        .duration(350)
+                        .attr('transform', 'translate('+x+','+y+')')
+                    networkClass.setState({ TRANS_X: x, TRANS_Y: y })
                 }
-                // Transform graph
-                networkGraph.transition()
-                    .duration(350)
-                    .attr('transform', 'translate('+(x < 0 ? x : (d3.event.key === 'ArrowLeft' ? 0 : MAX_WIDTH - width) )+','+y+')')
             }
         }).on("focus", function(){});
 
+        
+
+
         canvas.on('keyup', function(){
-            panning = false
+            if(d3.event.key === 'ArrowLeft' || d3.event.key === 'ArrowRight' || d3.event.key === 'ArrowUp' || d3.event.key === 'ArrowDown'){
+                networkClass.setState({ panning: false })
+                let x = networkClass.state.TRANS_X
+                let y = networkClass.state.TRANS_Y
+                let t = d3.zoomTransform(zoomContainer.node())
+                zoom.translateBy(zoomContainer, x-t.x, y-t.y)
+            }
         })
     }
 
@@ -996,13 +1042,10 @@ class Network extends Component{
                                         <div id='commit-text'>
                                             <div id='commit-info'>
                                                 <span id='commit-author' className='mr-5'>{commit_viewed.author ? commit_viewed.commit.author.name : commit_viewed.commit.author.user.name}</span>
-                                                <span id='commit-username' className='mr-15'>{`@${commit_viewed.author ? commit_viewed.author.login : commit_viewed.commit.author.name.replace(/\s/g, '')}`}</span>
+                                                <span id='commit-username' className='mr-5'>{`@${commit_viewed.author ? commit_viewed.author.login : commit_viewed.commit.author.name.replace(/\s/g, '')}`}</span>
                                                 <span id='commit-date'>{`on ${new Date(commit_viewed.commit.committer.date).toDateString()}`}</span>
                                             </div>
                                             <div id='commit-message'>
-                                                {commit_viewed.commit.message}
-                                            </div>
-                                            <div id='commit-desc'>
                                                 {commit_viewed.commit.message}
                                             </div>
                                         </div>
@@ -1033,6 +1076,7 @@ class Network extends Component{
                                 <div className='wrapper'>
                                     <div id='doing' className='issues'>
                                         <div className='title'>IN PROGRESS</div>
+                                        <div className='issues-holder'>
                                         {issues_viewed.doing && issues_viewed.doing.map((issue, i) => {
                                             return(
                                                 <div key={i} className='issue'>
@@ -1046,9 +1090,7 @@ class Network extends Component{
                                                                 </div>
                                                             }
                                                         </div>
-                                                        <div className='issue-number'>
-                                                            <a href={issue.html_url}>#{issue.number}</a>
-                                                        </div>
+                                                        
                                                     </div>
                                                     {issue.labels.length > 0 && <div className='issue-labels'>
                                                         {issue.labels.map((label, i) => {
@@ -1077,6 +1119,7 @@ class Network extends Component{
                                                 </div>
                                             )
                                         })}
+                                        </div>
                                         {
                                             (!issues_viewed.doing || issues_viewed.doing.length === 0) &&
                                             <div className='issue-empty'>
@@ -1103,9 +1146,7 @@ class Network extends Component{
                                                                 </div>
                                                             }
                                                         </div>
-                                                        <div className='issue-number'>
-                                                            <a href={issue.html_url}>#{issue.number}</a>
-                                                        </div>
+                                                        
                                                     </div>
                                                     {issue.labels.length > 0 && <div className='issue-labels'>
                                                         {issue.labels.map((label, i) => {
