@@ -10,8 +10,14 @@ import '../styles/Network.css';
 class Network extends Component{
     constructor(props){
         super(props);
+
+        let font_family = 'Assistant'
+        let font_size = 10
+        let font = `600 ${font_size}px ${font_family}`
         // Initialize constants
         this.state = {
+            branch_font: font,
+            branch_font_size: font_size,
             paths: null,
             MAX_HEIGHT: null,
             MAX_WIDTH: window.innerWidth*0.95,
@@ -20,7 +26,7 @@ class Network extends Component{
             panning: false,
             GRAPH_X: 0,
             GRAPH_Y: 0,
-            NODE_RADIUS: 5,
+            NODE_RADIUS: 6,
             INTERVAL_X: 20,
             INTERVAL_Y: 30,
             MARGINS: { top: 20, bottom: 20, left: 20, right: 20 },
@@ -33,11 +39,8 @@ class Network extends Component{
             Y_X: {} //keeps track of nearest X (node) per Y (row)
         }
 
-        this.getTextColor = this.getTextColor.bind(this);
-        this.getData = this.getData.bind(this);
-        this.extractIssues = this.extractIssues.bind(this);
-        this.getFiles = this.getFiles.bind(this);
-        this.drawNetwork = this.drawNetwork.bind(this);
+        d3.selection.prototype.first = function() { return d3.select(this.nodes()[0]) }
+        d3.selection.prototype.last = function() { return d3.select(this.nodes()[this.size() - 1]) }
     }
 
     componentDidMount(){
@@ -45,27 +48,31 @@ class Network extends Component{
         this.setState({ MAX_HEIGHT: document.getElementById('network-graph-wrapper').clientHeight })
     }
 
-    getTextColor(hex){
-        // Code snippet from https://stackoverflow.com/a/12043228
-
-        let rgb = parseInt(hex, 16);   // convert rrggbb to decimal
-        let r = (rgb >> 16) & 0xff;  // extract red
-        let g = (rgb >>  8) & 0xff;  // extract green
-        let b = (rgb >>  0) & 0xff;  // extract blue
-
-        let luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-        if (luma < 128) return 'white'
-        else return 'black'
+    getDefs = () => {
+         // Contributor image links
+        // let defs = canvas.append('defs')
+            // .selectAll('pattern')
+            // .data(Object.entries(contributors))
+            // .enter()
+            //     .append('pattern')
+            //     .attr('id', (d) => d[0].replace(/\s/g, ''))
+            //     .attr('width', '100%')
+            //     .attr('height', '100%')
+            //     .append('image')
+            //         .attr('xlink:href', (d) => d[1])
+            //         .attr('width', 4*this.state.NODE_RADIUS)
+            //         .attr('height', 4*this.state.NODE_RADIUS)
     }
 
-    async getData(props){
+    
+    getData = async (props) =>{
         await props.fetchCommits(props.username, props.reponame, props.checkout, props.checkout_from)
         await this.drawNetwork();
         await this.setState({ commit_viewed: this.props.commits[0] })
         await this.extractIssues(this.props.commits[0].commit.message);
     }
 
-    async extractIssues(message){
+    extractIssues = async (message) => {
         // 'DONE' issues
         let n;
         let done_issues = [];
@@ -99,39 +106,48 @@ class Network extends Component{
         })
     }
 
-    async getFiles(sha, index){
+    getFiles = async (sha, index) => {
         if(!this.props.files || !this.props.files[index]){
             await this.props.fetchFiles(this.props.username, this.props.reponame, sha, index);
         }
         this.setState({ files_viewed: this.props.files[index]})
-
     }
 
-    drawNetwork(){
-        let MAX_WIDTH = this.state.MAX_WIDTH;
-        let MAX_HEIGHT = this.state.MAX_HEIGHT
-        let commits = this.props.commits.slice();
+    RGBToHex = (rgb) => {
+        // Choose correct separator
+        let sep = rgb.indexOf(",") > -1 ? "," : " ";
+        // Turn "rgb(r,g,b)" into [r,g,b]
+        rgb = rgb.substr(4).split(")")[0].split(sep);
 
-        // Compute canvas width
-        let width = (commits.length * 2 * this.state.NODE_RADIUS) + ((commits.length-1) * this.state.INTERVAL_X) + this.state.MARGINS.left + this.state.MARGINS.right
-        this.props.setCanvasDisplay("width", width)
+        let r = (+rgb[0]).toString(16),
+        g = (+rgb[1]).toString(16),
+        b = (+rgb[2]).toString(16);
 
-        // Fix X Coordinates per node
-        let xScale = d3.scaleLinear()
-                        .domain([0, commits.length-1])
-                        .range([width-this.state.MARGINS.right, this.state.MARGINS.left]);
+        if (r.length == 1)
+            r = "0" + r;
+        if (g.length == 1)
+            g = "0" + g;
+        if (b.length == 1)
+            b = "0" + b;
 
-        let commitsWithX = commits.map( 
-            (commit, i) => {
-                return({
-                    ...commit, 
-                    index: i,
-                    x: parseInt(xScale(i)),
-                    drawn: false
-                });
-        })
+        return "" + r + g + b;
+    }
 
-        // Y Coordinates
+    getTextColor = (hex, convert) =>{
+        // Code snippet from https://stackoverflow.com/a/12043228
+        if(convert) hex = this.RGBToHex(hex);
+
+        let rgb = parseInt(hex, 16);   // convert rrggbb to decimal
+        let r = (rgb >> 16) & 0xff;  // extract red
+        let g = (rgb >>  8) & 0xff;  // extract green
+        let b = (rgb >>  0) & 0xff;  // extract blue
+
+        let luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        if (luma < 128) return 'white'
+        else return 'black'
+    }
+
+    getYCoords = (commitsWithX) => {
         let commitsQ = commitsWithX.slice()
         let commitsWithYandX = commitsWithX.slice()
         while(commitsQ.length){
@@ -303,61 +319,109 @@ class Network extends Component{
                 firstParent = firstParent ? false : firstParent
             }
         }
+        return commitsWithYandX
+    }
 
-        // Update the commits with X and Y Coordinates
-        this.props.updateCommits(commitsWithYandX)
-        let fetchedCommits = commitsWithYandX.slice()
-        let height = d3.max(commitsWithYandX.map(commit => commit.y)) + this.state.MARGINS.bottom
-        /*
+    getCoords = (commits, fetchedBranches, width) => {
+        let branches = fetchedBranches.slice()
+        branches.sort(function(a, b) {
+            a = new Date(a[1].committedDate);
+            b = new Date(b[1].committedDate);
+            return a>b ? -1 : a<b ? 1 : 0;
+        });
+        let branchesWithX = []
 
-        DRAWING PORTION
+        let branchGroup = d3.select('#network-graph')
+            .append('g')
+            .attr('id', 'branch-group')
 
-        */
+        let branchElems = branchGroup.selectAll('.branch-name')
 
+        let branchesQ = branches.slice()
+        let branch = null
+        let x = width - this.state.MARGINS.right
 
-        // Set up canvas
-        let canvas = d3.select('#network-graph')
-            .attr('width', MAX_WIDTH)
-            .attr('height', MAX_HEIGHT) // Navbar size is 60
-            .attr('focusable', false)
+        let commitsWithX = commits.map((commit, i) => {
+            let c = {
+                x,
+                ...commit,
+                index: i,
+                drawn: false
+            }
 
+            // dequeue a branch
+            if(branch === null && !!branchesQ.length) { 
+                branch = branchesQ.shift()
+            }
 
-        let screenWidth = width > MAX_WIDTH ? (MAX_WIDTH - width) : 0;
-
-        let zoom = d3.zoom()
-                .scaleExtent([1, 1])
-                .translateExtent([[0,0], [width, height]])
-                .on('zoom', () => {
-                    let network = d3.select('#network-graph-group')
-                    // let translate = network.attr('transform').match(/.*translate\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\).*/)
-                    
-                    let t = d3.event.transform;
-                    let transform = `translate(${t.x},${t.y})`
-                    network.attr("transform", d3.event.transform);
-                })
+            if(!!branchesQ.length && commit.commit.committer.date === branch[1].committedDate){
+                branchGroup.append('text')
+                    .attr('class', 'branch-name')
+                    .attr('text-anchor', 'end')
+                    .attr('x', x)
+                    .attr('y', 0)
+                    .style("font", this.state.branch_font)
+                    .text(branch[0])
                 
-        let zoomContainer = canvas.append('rect')
-            .attr('id', 'zoom-handler')
-            .attr('width', MAX_WIDTH)
-            .attr('height', MAX_HEIGHT)
-            .style('fill', 'none')
-            .style('pointer-events', 'all')
+                let branchElem =  branchGroup.selectAll('.branch-name').last()
+                let bbox = branchElem.node().getBBox()
 
-        zoom.translateBy(zoomContainer, screenWidth, 0)
-        zoomContainer.call(zoom)
-        let initPan = d3.zoomTransform(d3.select('#zoom-handler').node())
-        let networkGraph = canvas.append('g')
-            .attr('id', 'network-graph-group')
-            .attr('transform', 'translate('+initPan.x+','+initPan.y+')')
-        
-        // Parents paths:
+                // new x = prev x - diameter - intervalOnX - length of branchname - paddingleft&right
+                branch = { x, commit: i, text: branch[0], width: bbox.width, height: bbox.height }
+                branchesWithX.push(branch)
+
+                x -= this.state.NODE_RADIUS*2 + this.state.INTERVAL_X + bbox.width + 20
+
+                // Get new branch
+                branch = null
+            }else{
+                // new x = prev x - diameter - intervalOnX  
+                x -= this.state.NODE_RADIUS * 2 + this.state.INTERVAL_X
+            }
+            
+
+            return c
+        })
+
+        branchGroup.remove()
+        this.props.setCanvasDisplay("branches", branchesWithX)
+        return commitsWithX
+    }
+
+    getXCoords = (commits, width) => {
+        // Fix X Coordinates per node
+        let xScale = d3.scaleLinear()
+                        .domain([0, commits.length-1])
+                        .range([width-this.state.MARGINS.right, this.state.MARGINS.left]);
+
+        let contributors = {}
+
+        let commitsWithX = commits.map( 
+            (commit, i) => {
+                // let name = commit.commit.author.name
+                // if(contributors[name] == null){
+                //     let url = commit.commit.author.avatarUrl ? commit.commit.author.avatarUrl : commit.commit.author.avatar_url
+                //     contributors[name] = url 
+                // }
+
+                return({
+                    ...commit, 
+                    index: i,
+                    x: parseInt(xScale(i)),
+                    drawn: false
+                });
+        })
+        return commitsWithX
+    }
+
+    getParentPaths = (commits) =>{
         let parentPaths = {}
         let i,j
-        for(i=0; i<fetchedCommits.length; i++){
-            let commit = fetchedCommits[i];
+        for(i=0; i<commits.length; i++){
+            let commit = commits[i];
 
             for(j=0; j<commit.parents.length; j++){
-                let parent = fetchedCommits.find(x => (x.sha === commit.parents[j].sha));
+                let parent = commits.find(x => (x.sha === commit.parents[j].sha));
                 if(typeof(parent) === 'undefined') break;
 
                 let commit_paths = []
@@ -913,12 +977,89 @@ class Network extends Component{
 
         }
 
+        return parentPaths
+    }
+
+    drawNetwork(){
+        let MAX_WIDTH = this.state.MAX_WIDTH;
+        let MAX_HEIGHT = this.state.MAX_HEIGHT
+        let fetched_commits = this.props.commits.slice();
+
+        // Set up canvas
+        let canvas = d3.select('#network-graph')
+            .attr('width', MAX_WIDTH)
+            .attr('height', MAX_HEIGHT) // Navbar size is 60
+            .attr('focusable', false)
+
+        // Compute canvas width
+
+        let branches = Object.entries(this.props.branches)
+        let branchNameString = ''
+        branches.map((branch) => branchNameString += branch[0])
+
+        let branchNameText = canvas.append('text')
+            .attr('fill', 'black')
+            .attr('x', 0)
+            .attr('y', 12)
+            .style("font", this.state.branch_font)
+            .text(branchNameString);
+
+        let bbox = branchNameText.node().getBBox();
+        let width = (fetched_commits.length * 2 * this.state.NODE_RADIUS) + 
+                    ((fetched_commits.length-1) * this.state.INTERVAL_X) + 
+                    bbox.width + 
+                    (branches.length * 20)
+
+        this.props.setCanvasDisplay("width", width)
+        branchNameText.remove()
+
+        let screenWidth = width > MAX_WIDTH ? (MAX_WIDTH - width) : 0;
+
+        let commitsWithX = this.getCoords(fetched_commits, branches, width)
+        // let commitsWithX = this.getXCoords(fetched_commits, width)
+        let commitsWithYandX = this.getYCoords(commitsWithX)
+
+
+        // Get X and Y Coordinates
+        this.props.updateCommits(commitsWithYandX)
+        let commits = commitsWithYandX.slice()
+        let height = d3.max(commitsWithYandX.map(commit => commit.y)) + this.state.MARGINS.bottom
+       
+
+        let zoom = d3.zoom()
+                .scaleExtent([1, 1])
+                .translateExtent([[0,0], [width, height]])
+                .on('zoom', () => {
+                    let network = d3.select('#network-graph-group')
+                    // let translate = network.attr('transform').match(/.*translate\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\).*/)
+                    
+                    let t = d3.event.transform;
+                    let transform = `translate(${t.x},${t.y})`
+                    network.attr("transform", d3.event.transform);
+                })
+                
+        let zoomContainer = canvas.append('rect')
+            .attr('id', 'zoom-handler')
+            .attr('width', MAX_WIDTH)
+            .attr('height', MAX_HEIGHT)
+            .style('fill', 'none')
+            .style('pointer-events', 'all')
+
+        zoom.translateBy(zoomContainer, screenWidth, 0)
+        zoomContainer.call(zoom)
+        let initPan = d3.zoomTransform(d3.select('#zoom-handler').node())
+        
+        let networkGraph = canvas.append('g')
+            .attr('id', 'network-graph-group')
+            .attr('transform', 'translate('+initPan.x+','+initPan.y+')')
+        
+        // Draw paths
+        let parentPaths = this.getParentPaths(commits)
         this.props.setCanvasDisplay("paths", parentPaths)
         let colorScale = d3.scaleLinear().domain([this.state.MASTER_Y, height-this.state.MARGINS.bottom])
                             .interpolate(d3.interpolateHcl)
                             .range([d3.rgb("#007AFF"), d3.rgb('#FFF500')])
 
-        // Draw paths
         let connections = networkGraph.selectAll('g')
             .data(Object.entries(parentPaths))
             .enter()
@@ -935,36 +1076,76 @@ class Network extends Component{
         
         // Draw commit nodes
         let networkClass = this
-        let commitBox = d3.select('#commit-box')
-        let defaultNetworkRight = d3.select('#default-network-right')
-        let issueViewer = d3.select('#issue-viewer')
+        
         let commitNodes = networkGraph.selectAll('circle')
-            .data(fetchedCommits)
+            .data(commits)
             .enter()
                 .append('circle')
                 .attr('class', 'commit-node')
                 .attr('cx', (d) => d.x)
                 .attr('cy', (d) => d.y)
                 .attr('r', networkClass.state.NODE_RADIUS)
+                .attr('fill', (d) => colorScale(d.y))
+                // .attr('fill', (d) => `url(#${d.commit.author.name.replace(/\s/g, '')})`)
             .on('mouseover', function(d){
                 networkClass.setState({ commit_viewed: d })
-                d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS+5)
-                commitBox.transition().style('opacity', '1.0')
+                d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS*1.75)
                 networkClass.extractIssues(d.commit.message);
                 networkClass.getFiles(d.sha, d.index);
-                issueViewer.style('display', 'inline-block');
             })
             .on('mouseout', function(){
                 d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS)
-                // commitBox.transition().style('opacity', '0.0')
-                issueViewer.style('display', 'none')
             })
+
+        let canvas_branches = this.props.canvas_branches
+        canvas_branches = canvas_branches.map((branch) => {
+            return ({
+                ...branch,
+                y: commits[branch.commit].y
+            })
+        })
+        let branchBoxLayer = networkGraph.append('g')
+        let branchTextLayer = networkGraph.append('g')
+            
+        branchTextLayer.selectAll('text')
+            .data(canvas_branches)
+            .enter()
+                .append('text')
+                .attr('fill', (d) => {
+                    console.log(colorScale(d.y))
+                    console.log(networkClass.getTextColor(colorScale(d.y), true))
+                    return networkClass.getTextColor(colorScale(d.y), true)
+                })
+                .attr('text-anchor', 'end')
+                .style('font', networkClass.state.branch_font)
+                .attr('x', (d) => d.x-15)
+                .attr('y', (d) => d.y+(networkClass.state.branch_font_size*0.25))
+                .text((d) => d.text)
+
+        branchBoxLayer.selectAll('rect')
+            .data(canvas_branches)
+            .enter()
+                .append('rect')
+                .attr('fill', (d) => colorScale(d.y))
+                .attr('rx', 3)
+                .attr('ry', 3)
+                .attr('x', (d) => d.x - d.width - 20)
+                .attr('y', (d) => d.y - (d.height * 0.5) - 1.5)
+                .attr('width', (d) => d.width + 10)
+                .attr('height', (d) => d.height + 3)
+        
+        branchBoxLayer.selectAll('path')
+            .data(canvas_branches)
+            .enter()
+            .append('path')
+                    .style('fill', (d) => colorScale(d.y))
+                    .attr('d', (d) => `M${d.x-networkClass.state.NODE_RADIUS} ${d.y} L${d.x - 10} ${d.y - (d.height * 0.25)} L${d.x - 10} ${d.y + (d.height * 0.25)} Z`)
+
 
         canvas.on('mouseenter', function(){
             this.focus()
         })
 
-        let panning = false
         canvas.on('keydown', function(){
             if(d3.event.key === 'ArrowLeft' || d3.event.key === 'ArrowRight' || d3.event.key === 'ArrowUp' || d3.event.key === 'ArrowDown'){
                 if(!networkClass.state.panning){
@@ -1205,7 +1386,8 @@ function mapStateToProps(state){
         commits: state.commits.data.commits,
         files: state.commits.data.files,
         issues: state.issues.data.issues ? state.issues.data.issues.graph : null,
-        issue_fetching: state.issues.fetching
+        issue_fetching: state.issues.fetching,
+        canvas_branches: state.ui.canvas.branches
     }
 }
 

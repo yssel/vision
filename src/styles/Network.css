@@ -21,17 +21,12 @@
 #network-right{
 	position: absolute;
 	border-left: 0.5px #cacaca solid;
-	/*background: blue;*/
 	float: right;
 	top: 0;
 	padding-top: 60px;
 	height: 100vh;
 	left: 84vw;
 	width:16vw;
-}
-
-#default-network-right{
-	/*visibility: hidden;*/
 }
 
 #network-tools{
@@ -48,6 +43,7 @@
 }
 
 #network-graph{
+	cursor: move;
 }
 
 #network-graph:focus{
@@ -56,11 +52,11 @@
 
 .commit-node{
 	fill: black;
+	cursor: default;
 }
 
 .connection{
-	stroke-width: 2.25px;
-	/*fill: transparent;*/
+	stroke-width: 2.5px;
 }
 
 .connection-border{
@@ -76,7 +72,6 @@
 	height: calc(100vh - var(--network-height));
 	background: var(--color-lb);
 	z-index: 99;
-	/*overflow-y: scroll;*/
 }
 
 #commit-box{
@@ -113,7 +108,6 @@
 	padding-top: 15px;
 	padding-bottom: 15px;
 	position: relative;
-	/*height: calc(100% - 53px);*/
 }
 
 #commit-box .header{
@@ -134,7 +128,6 @@
 	border: 0.5px solid #cacaca;
 	box-shadow: var(--box-shadow-light);
 	position: relative;
-	/*height: 50px;*/
 	width: calc(100% - 35px);
 }
 
@@ -164,7 +157,6 @@
 	top: 10px;
 	min-height: 50px;
 	max-height: 62px;
-	/*width: calc(80% - 78px);*/
 }
 
 #commit-author{
@@ -178,16 +170,12 @@
 }
 
 #commit-message{
-	/*color: #1d2323;*/
-	/*font-family: "Open Sans";*/
 	font-weight: 600;
 	font-size: 13px;
 	max-height: 31px;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	/*padding-top: 2px;*/
 	padding-bottom: 2px;
-	/*font-size: 1px;*/
 }
 #commit-desc{
 	font-size: 10px;
@@ -199,7 +187,6 @@
 
 #files-changed{
 	max-height: calc(100% - 110px);
-	/*background: blue;*/
 	overflow-y: scroll;
 	padding-right: 8px;
 }
@@ -247,15 +234,11 @@
 
 .issues{
 	position: absolute;
-	/*top: 0;*/
 	display: inline-block;
 	width: calc(50% - 15px);
 	height: calc(100% - 30px);
-	/*border-radius: 4px;*/
-	/*background: var(--color-lg);*/
 	margin-right: 5px;
 	padding-right: 10px;
-	/*box-shadow: var(--box-shadow-light);*/
 }
 
 .issues .title{
@@ -290,12 +273,9 @@
 	padding-top: 30px;
 	padding-bottom: 30px;
 	text-align: center;
-	/*background: var(--color-lg);*/
 	background: rgba(223, 226, 226, 0.6);
-	/*box-shadow: var(--box-shadow-light);*/
 	border-radius: 4px;
 	margin-top: 8px;
-	/*letter-spacing: 0.8px;*/
 }
 
 .issue{
@@ -307,7 +287,6 @@
 	font-size: 12px;
 	color: #141414;
 	border: 0.5px solid rgba(202, 202, 202, 0.5);
-	/*font-weight: 600;*/
 }
 
 .issue>.divider{
@@ -323,7 +302,6 @@
 
 .issue-info>div{
 	display: inline-block;
-	/*position: absolute;*/
 }
 
 .issue-data{
@@ -331,11 +309,7 @@
 }
 
 .issue-number{
-	/*width: calc(20% - 10px);*/
-	/*text-align: right;*/
 	text-decoration: none;
-	/*left:;*/
-	/*top: 10px;*/
 	position: absolute;
 	font-size: 14px;
 }
@@ -388,10 +362,8 @@
 }
 
 .issue-labels{
-	/*font-weight: 600;*/
 	padding: 15px;
 	padding-top: 5px;
-	/*padding-bottom: 10px;*/
 }
 
 .issue-label{
@@ -403,41 +375,4 @@
 	padding-right: 10px;
 	margin-right: 5px;
 	border-radius: 15px;
-}
-
-#sidenav .header {
-	background: #ebebeb
-}
-
-#sidenav{
-	width: 14vw;
-	height: 100vh;
-	background: #faf9f9;
-	/*background: #e0e0ec;*/
-	display: inline-block;
-	position: fixed;
-	z-index: 100;
-	border-right: 0.5px #cacaca solid;
-
-}
-
-#search-bar{
-	margin: 0;
-	height: 30px;
-	background: white;
-	border-radius: 20px;
-	border: 1px solid #dfe1e5;
-	/*pad*/
-}
-
-#search-bar i{
-	line-height: 28px;
-	width: 10%;
-}
-
-#search-input{
-	line-height: 25px;
-	outline: none;
-	border: none;
-	width: 90%;
 }
