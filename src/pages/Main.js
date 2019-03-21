@@ -124,7 +124,7 @@ class Main extends Component {
 					</div>
 					<div id='main'>
 						{
-						this.props.username && 
+						this.props.username && this.props.branches && this.props.tags &&
 						<Switch>
 							<Route 
 								exact 

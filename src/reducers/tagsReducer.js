@@ -31,6 +31,38 @@ export default function tagsReducer(state = {
 			}
 		}
 
+		case "CHECK_TAG": {
+			return {
+				...state,
+				fetching: true
+			}
+		}
+
+		case "CHECK_TAG_REJECTED": {
+			return {
+				...state,
+				fetching: false,
+				errors: action.payload.errrors
+			}
+		}
+
+		case "CHECK_TAG_FULFILLED": {
+			return {
+				...state,
+				fetching: false,
+				fetched: true,
+				data: {
+					tags: {
+						...state.data.tags,
+						[action.payload.tag]: {
+							...state.data.tags[action.payload.tag],
+							valid: action.payload.valid
+						}
+					}
+				}
+			}
+		}
+
 		default:{
 			return state;
 		}

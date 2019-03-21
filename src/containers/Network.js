@@ -1,5 +1,7 @@
 import React, { Component} from 'react';
 import { connect } from 'react-redux';
+import { isBranchIncluded } from '../actions/branchesActions'
+import { isTagIncluded } from '../actions/tagsActions'
 import { fetchCommits, updateCommits, fetchFiles } from '../actions/commitsActions'
 import { setCanvasDisplay } from '../actions/uiActions'
 import { fetchIssue } from '../actions/issuesActions'
@@ -67,6 +69,7 @@ class Network extends Component{
     
     getData = async (props) =>{
         await props.fetchCommits(props.username, props.reponame, props.checkout, props.checkout_from)
+        await this.getBranchesNTags()
         await this.drawNetwork();
         await this.setState({ commit_viewed: this.props.commits[0] })
         await this.extractIssues(this.props.commits[0].commit.message);
@@ -322,13 +325,8 @@ class Network extends Component{
         return commitsWithYandX
     }
 
-    getCoords = (commits, fetchedBranches, width) => {
+    getXCoords = (commits, fetchedBranches, width) => {
         let branches = fetchedBranches.slice()
-        branches.sort(function(a, b) {
-            a = new Date(a[1].committedDate);
-            b = new Date(b[1].committedDate);
-            return a>b ? -1 : a<b ? 1 : 0;
-        });
         let branchesWithX = []
 
         let branchGroup = d3.select('#network-graph')
@@ -338,9 +336,11 @@ class Network extends Component{
         let branchElems = branchGroup.selectAll('.branch-name')
 
         let branchesQ = branches.slice()
+        let sameBranches = []
         let branch = null
         let x = width - this.state.MARGINS.right
-
+        let offset = this.props.canvas_nameCount - (this.props.canvas_branches.length + this.props.canvas_tags.length - this.props.canvas_nameCount)
+        let removedStr = ''
         let commitsWithX = commits.map((commit, i) => {
             let c = {
                 x,
@@ -350,27 +350,43 @@ class Network extends Component{
             }
 
             // dequeue a branch
-            if(branch === null && !!branchesQ.length) { 
+            if(!!branchesQ.length && branch === null) { 
+                branch = branchesQ.shift()
+
+                // dequeue next branches with the same commit pointing to
+                while(!!branchesQ.length && branchesQ[0][1].sha === branch[1].sha){
+                    branchesQ.shift()
+                }
+            }
+            
+            // Remove branches not shown on graph
+            let xx = 0
+            while(!!branchesQ.length && branch && new Date(branch[1].committedDate) > new Date(commit.commit.committer.date)){
+                xx++
+                if(!branch[1].dup) removedStr += branch[0]
                 branch = branchesQ.shift()
             }
 
-            if(!!branchesQ.length && commit.commit.committer.date === branch[1].committedDate){
+            if(branch && commit.sha === branch[1].sha){
+                let text = branch[1].others ? branch[0] + branch[1].others : branch[0]
                 branchGroup.append('text')
                     .attr('class', 'branch-name')
                     .attr('text-anchor', 'end')
                     .attr('x', x)
                     .attr('y', 0)
                     .style("font", this.state.branch_font)
-                    .text(branch[0])
+                    .text(text)
                 
                 let branchElem =  branchGroup.selectAll('.branch-name').last()
                 let bbox = branchElem.node().getBBox()
 
                 // new x = prev x - diameter - intervalOnX - length of branchname - paddingleft&right
-                branch = { x, commit: i, text: branch[0], width: bbox.width, height: bbox.height }
+                branch = { x, commit: i, text, width: bbox.width, height: bbox.height }
                 branchesWithX.push(branch)
+            
+                offset--
 
-                x -= this.state.NODE_RADIUS*2 + this.state.INTERVAL_X + bbox.width + 20
+                x -= this.state.NODE_RADIUS*2 + this.state.INTERVAL_X + bbox.width + 10
 
                 // Get new branch
                 branch = null
@@ -385,32 +401,17 @@ class Network extends Component{
 
         branchGroup.remove()
         this.props.setCanvasDisplay("branches", branchesWithX)
-        return commitsWithX
-    }
 
-    getXCoords = (commits, width) => {
-        // Fix X Coordinates per node
-        let xScale = d3.scaleLinear()
-                        .domain([0, commits.length-1])
-                        .range([width-this.state.MARGINS.right, this.state.MARGINS.left]);
+        let removedText = d3.select('#network-graph').append('text')
+            .attr('fill', 'white')
+            .attr('x', 0)
+            .attr('y', 12)
+            .style("font", this.state.branch_font)
+            .text(removedStr);
 
-        let contributors = {}
-
-        let commitsWithX = commits.map( 
-            (commit, i) => {
-                // let name = commit.commit.author.name
-                // if(contributors[name] == null){
-                //     let url = commit.commit.author.avatarUrl ? commit.commit.author.avatarUrl : commit.commit.author.avatar_url
-                //     contributors[name] = url 
-                // }
-
-                return({
-                    ...commit, 
-                    index: i,
-                    x: parseInt(xScale(i)),
-                    drawn: false
-                });
-        })
+        let bbox = removedText.node().getBBox();
+        this.props.setCanvasDisplay("offset", offset*10 + bbox.width)
+        removedText.remove()
         return commitsWithX
     }
 
@@ -980,9 +981,116 @@ class Network extends Component{
         return parentPaths
     }
 
-    drawNetwork(){
+    getBranchesNTags = async () => {
+        // let fetched_branches = Object.entries(this.props.branches)
+        // let fetched_tags = Object.entries(this.props.tags)
+        // let branches = []
+        // let tags = []
+        
+        // // Remove unchecked_out branches & tags
+        // if(this.props.checkout !== 'ALL'){
+        //     while(fetched_branches.length){
+        //         let branch = fetched_branches.shift()
+        //         await this.props.isBranchIncluded(this.props.username, this.props.reponame, branch[0], this.props.checkout_from)
+        //         if(this.props.branches[branch[0]].valid)branches.push(branch)
+        //     }
+
+        //     while(fetched_tags.length){
+        //         let tag = fetched_tags.shift()
+        //         await this.props.isTagIncluded(this.props.username, this.props.reponame, tag[0], this.props.checkout_from)
+        //         if(this.props.tags[tag[0]].valid)tags.push(tag)
+        //     }                
+
+        // }else{
+        //     branches = fetched_branches
+        //     tags = fetched_tags
+        // }
+
+        let branches = Object.entries(this.props.branches)
+        let tags = Object.entries(this.props.tags)
+        branches.sort(function(a, b) {
+            a = new Date(a[1].committedDate);
+            b = new Date(b[1].committedDate);
+            return a>b ? -1 : a<b ? 1 : 0;
+        });
+
+        tags.sort(function(a, b) {
+            a = new Date(a[1].committedDate);
+            b = new Date(b[1].committedDate);
+            return a>b ? -1 : a<b ? 1 : 0;
+        });
+
+        let bboxStr = ''
+        let count = branches.length + tags.length
+        let branches_length = branches.length
+        let tags_length = tags.length
+
+        let index = null // stores index of duplicated
+        let string = '' // collects duplicated names
+
+        branches.map((branch, i) => {
+            bboxStr += branch[0]
+
+            if(index === null){
+                // Next branch is also pointing to same commit
+                if(i < branches_length-1 && branches[i+1][1].sha === branch[1].sha){
+                    index = i
+                    string = ''
+                }
+            }else{
+                // Record branch name
+                string += ', ' + branch[0]
+                bboxStr += ', '
+                count--
+
+                branch[1].dup = true
+                if(i === branches_length-1 || branches[i+1][1].sha !== branch[1].sha){
+                    // Record and reset
+                    branches[index][1].others = string
+                    index = null
+                    string = ''
+                }
+            }
+        })
+
+        index = null
+        string = ''
+
+        tags.map((tag, i) => {
+            bboxStr += tag[0]
+
+            if(index === null){
+                // Next branch is also pointing to same commit
+                if(i < tags_length-1 && tags[i+1][1].sha === tags[1].sha){
+                    index = i
+                    string = ''
+                }
+            }else{
+                // Record branch name
+                string += ', ' + tag[0]
+                bboxStr += ', '
+                count--
+
+                tag[1].dup = true
+                if(i === tags_length-1 || tags[i+1][1].sha !== tag[1].sha){
+                    // Record and reset
+                    tags[index][1].others = string
+                    index = null
+                    string = ''
+                }
+            }
+        })
+
+        await this.props.setCanvasDisplay('nameString', bboxStr)
+        await this.props.setCanvasDisplay('branches', branches)
+        await this.props.setCanvasDisplay('tags', tags)
+        await this.props.setCanvasDisplay('nameCount', count)
+    }
+
+    drawNetwork = () => {
         let MAX_WIDTH = this.state.MAX_WIDTH;
-        let MAX_HEIGHT = this.state.MAX_HEIGHT
+        let MAX_HEIGHT = this.state.MAX_HEIGHT;
+        let MARGINS = this.state.MARGINS;
         let fetched_commits = this.props.commits.slice();
 
         // Set up canvas
@@ -991,44 +1099,49 @@ class Network extends Component{
             .attr('height', MAX_HEIGHT) // Navbar size is 60
             .attr('focusable', false)
 
+
+        // Get branches && tags        
+        let namesString = this.props.canvas_nameString
+        let nameCount = this.props.canvas_nameCount
+        let branches = this.props.canvas_branches
+        let tags = this.props.canvas_tags
+
         // Compute canvas width
-
-        let branches = Object.entries(this.props.branches)
-        let branchNameString = ''
-        branches.map((branch) => branchNameString += branch[0])
-
-        let branchNameText = canvas.append('text')
+        let namesText = canvas.append('text')
             .attr('fill', 'black')
             .attr('x', 0)
             .attr('y', 12)
             .style("font", this.state.branch_font)
-            .text(branchNameString);
+            .text(namesString);
 
-        let bbox = branchNameText.node().getBBox();
+        let bbox = namesText.node().getBBox();
+        this.props.setCanvasDisplay('nameStringWidth', bbox.width)
+
         let width = (fetched_commits.length * 2 * this.state.NODE_RADIUS) + 
                     ((fetched_commits.length-1) * this.state.INTERVAL_X) + 
+                    MARGINS.left + MARGINS.right +
                     bbox.width + 
-                    (branches.length * 20)
+                    (10 * nameCount)
 
         this.props.setCanvasDisplay("width", width)
-        branchNameText.remove()
+        namesText.remove()
 
-        let screenWidth = width > MAX_WIDTH ? (MAX_WIDTH - width) : 0;
 
-        let commitsWithX = this.getCoords(fetched_commits, branches, width)
-        // let commitsWithX = this.getXCoords(fetched_commits, width)
+        let commitsWithX = this.getXCoords(fetched_commits, branches, width)
         let commitsWithYandX = this.getYCoords(commitsWithX)
-
+        
+        let offset = this.props.canvas_offset
+        let screenWidth = width > MAX_WIDTH ? (MAX_WIDTH - width + offset) : 0;
 
         // Get X and Y Coordinates
         this.props.updateCommits(commitsWithYandX)
         let commits = commitsWithYandX.slice()
-        let height = d3.max(commitsWithYandX.map(commit => commit.y)) + this.state.MARGINS.bottom
-       
+        let height = d3.max(commitsWithYandX.map(commit => commit.y)) + MARGINS.bottom
+        console.log(offset)
 
         let zoom = d3.zoom()
                 .scaleExtent([1, 1])
-                .translateExtent([[0,0], [width, height]])
+                .translateExtent([[0,0], [commitsWithX[0].x + MARGINS.right - offset, height]])
                 .on('zoom', () => {
                     let network = d3.select('#network-graph-group')
                     // let translate = network.attr('transform').match(/.*translate\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\).*/)
@@ -1072,7 +1185,14 @@ class Network extends Component{
                     .attr('class','connection')
                     .style('fill', 'transparent')
                     .style('stroke', (d) => colorScale(d.color))
-                    .attr('d', (d) => 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy)
+                    .attr('d', (data) => {
+                        let d = data
+                        d.mx -= offset
+                        d.cx -= offset
+                        d.cx1 -= offset
+                        d.cx2 -= offset
+                        return 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy
+                    })
         
         // Draw commit nodes
         let networkClass = this
@@ -1082,7 +1202,7 @@ class Network extends Component{
             .enter()
                 .append('circle')
                 .attr('class', 'commit-node')
-                .attr('cx', (d) => d.x)
+                .attr('cx', (d) => (Number(d.x-offset)))
                 .attr('cy', (d) => d.y)
                 .attr('r', networkClass.state.NODE_RADIUS)
                 .attr('fill', (d) => colorScale(d.y))
@@ -1097,6 +1217,7 @@ class Network extends Component{
                 d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS)
             })
 
+        // Draw branch ui pointers
         let canvas_branches = this.props.canvas_branches
         canvas_branches = canvas_branches.map((branch) => {
             return ({
@@ -1104,42 +1225,47 @@ class Network extends Component{
                 y: commits[branch.commit].y
             })
         })
+
         let branchBoxLayer = networkGraph.append('g')
         let branchTextLayer = networkGraph.append('g')
-            
+        
+        // text
         branchTextLayer.selectAll('text')
             .data(canvas_branches)
             .enter()
                 .append('text')
                 .attr('fill', (d) => {
-                    console.log(colorScale(d.y))
-                    console.log(networkClass.getTextColor(colorScale(d.y), true))
+                    // return colorScale(d.y)
                     return networkClass.getTextColor(colorScale(d.y), true)
                 })
                 .attr('text-anchor', 'end')
                 .style('font', networkClass.state.branch_font)
-                .attr('x', (d) => d.x-15)
+                .attr('x', (d) => d.x-15-offset)
                 .attr('y', (d) => d.y+(networkClass.state.branch_font_size*0.25))
                 .text((d) => d.text)
 
+        // box
         branchBoxLayer.selectAll('rect')
             .data(canvas_branches)
             .enter()
                 .append('rect')
+                // .attr('fill', 'white')
+                // .style('stroke-width', '1px')
+                // .style('stroke', (d) => colorScale(d.y))
                 .attr('fill', (d) => colorScale(d.y))
                 .attr('rx', 3)
                 .attr('ry', 3)
-                .attr('x', (d) => d.x - d.width - 20)
+                .attr('x', (d) => d.x - d.width - 20 - offset)
                 .attr('y', (d) => d.y - (d.height * 0.5) - 1.5)
                 .attr('width', (d) => d.width + 10)
                 .attr('height', (d) => d.height + 3)
-        
+        // tip
         branchBoxLayer.selectAll('path')
             .data(canvas_branches)
             .enter()
             .append('path')
                     .style('fill', (d) => colorScale(d.y))
-                    .attr('d', (d) => `M${d.x-networkClass.state.NODE_RADIUS} ${d.y} L${d.x - 10} ${d.y - (d.height * 0.25)} L${d.x - 10} ${d.y + (d.height * 0.25)} Z`)
+                    .attr('d', (d) => `M${d.x-networkClass.state.NODE_RADIUS-offset} ${d.y} L${d.x - 11- offset} ${d.y - (d.height * 0.25)} L${d.x - 11- offset} ${d.y + (d.height * 0.25)} Z`)
 
 
         canvas.on('mouseenter', function(){
@@ -1159,10 +1285,10 @@ class Network extends Component{
                     // check keycode
                     switch (d3.event.key) {
                         case 'ArrowLeft': //left 
-                            x = MAX_WIDTH < width ? Math.min(x+180,0) : x
+                            x = MAX_WIDTH < width-offset ? Math.min(x+180, offset) : x
                             break;
                         case 'ArrowRight': // right
-                            x = MAX_WIDTH < width ? Math.max(MAX_WIDTH - width, x-180) : x
+                            x = MAX_WIDTH < width-offset ? Math.max(MAX_WIDTH - width + offset, x-180) : x
                             break;
                         case 'ArrowUp': // up
                             y = MAX_HEIGHT < height ? Math.min(y+180,0) : y
@@ -1173,7 +1299,7 @@ class Network extends Component{
                         default:
                             break;
                     }
-                    if(MAX_WIDTH < width) x = x <= 0 ? x : 0
+                    if(MAX_WIDTH < width-offset) x = x <= 0 ? x : 0
                     if(MAX_HEIGHT < height) y = y <= 0 ? y : 0
                     // Transform graph
                     network.transition()
@@ -1383,11 +1509,17 @@ function mapStateToProps(state){
         reponame: state.repo.data.name,
         master_sha: state.repo.data.master_sha,
         branches: state.branches.data.branches,
+        tags: state.tags.data.tags,
         commits: state.commits.data.commits,
         files: state.commits.data.files,
         issues: state.issues.data.issues ? state.issues.data.issues.graph : null,
         issue_fetching: state.issues.fetching,
-        canvas_branches: state.ui.canvas.branches
+        canvas_branches: state.ui.canvas.branches,
+        canvas_tags: state.ui.canvas.tags,
+        canvas_nameString: state.ui.canvas.nameString,
+        canvas_nameStringWidth: state.ui.canvas.nameStringWidth,
+        canvas_nameCount: state.ui.canvas.nameCount,
+        canvas_offset: state.ui.canvas.offset,
     }
 }
 
@@ -1395,6 +1527,8 @@ function mapDispatchToProps(dispatch){
     return {
         fetchFiles: async (owner, name, sha, index) => await dispatch(fetchFiles(owner, name, sha, index)),
         fetchIssue: async (owner, name, issueNumber) => await dispatch(fetchIssue(owner, name, issueNumber)),
+        isBranchIncluded: async (user, repo, branch, commit) => await dispatch(isBranchIncluded(user, repo, branch, commit)),
+        isTagIncluded: async (user, repo, tag, commit) => await dispatch(isTagIncluded(user, repo, tag, commit)),
         fetchCommits: async (owner, name, type, fetchPoint) => await dispatch(fetchCommits(owner, name, type, fetchPoint)),
         updateCommits: (commits) => dispatch(updateCommits(commits)),
         setCanvasDisplay: (field, value) => dispatch(setCanvasDisplay(field, value))

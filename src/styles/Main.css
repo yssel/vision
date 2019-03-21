@@ -6,7 +6,11 @@
 }
 
 #sidenav{
-	width: var(--sidenav-width);
+	border-right: 0.5px solid #cacaca;
+	/*background: blue;*/
+	/*z-index: 2;*/
+	height: 100vh;
+	width: calc(var(--sidenav-width) - 0.5px);
 	position: relative;
 }
 
@@ -16,7 +20,7 @@
 
 #logout{
 	position: absolute;
-	bottom: 0;
+	top: 93vh;
 }
 
 #nav{

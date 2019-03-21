@@ -1,4 +1,49 @@
-import { authenticate } from './fetchActions'
+import { authenticate, authenticateRest } from './fetchActions'
+
+async function isBranchIncludedReq(user, repo, branch, commit){
+	console.log(branch, commit)
+	let link = `https://api.github.com/repos/${user}/${repo}/compare/${commit}...${branch}`;
+	let response = await authenticateRest(link, true);
+	let included = (response.status === 'behind' ||  response.status === 'identical') ? true : false 
+	return included;
+}
+
+export function isBranchIncluded(user, repo, branch, commit){
+	return async function (dispatch){
+		dispatch({ type: 'CHECK_BRANCH'})
+
+		try{
+			let response = await isBranchIncludedReq(user, repo, branch, commit)
+			if(!response.errors)
+				dispatch({
+					type: 'CHECK_BRANCH_FULFILLED',
+					payload: {
+						branch,
+						valid: response
+					}
+				})
+			else{
+				dispatch({ 
+					type: "CHECK_BRANCH_REJECTED",
+					payload: {
+						branch,
+						errors: response.errors
+					} 
+				})
+			}
+
+		}catch(err){
+			dispatch({ 
+				type: "CHECK_BRANCH_REJECTED",
+				payload: {
+					branch,
+					errors: err
+				} 
+			})
+		}
+
+	}
+}
 
 async function fetchSelectedBranch(username, reponame, endCursor){
 
