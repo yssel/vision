@@ -59,6 +59,12 @@
 	stroke-width: 2.5px;
 }
 
+.pull-req{
+	stroke-linecap: round;
+	stroke-dasharray: 2, 4;
+	stroke-width: 1.5px;
+}
+
 .connection-border{
 	stroke-width: 3px;
 }

@@ -6,6 +6,7 @@ import branches from './branchesReducer'
 import tags from './tagsReducer'
 import commits from './commitsReducer'
 import issues from './issuesReducer'
+import pulls from './pullsReducer'
 import ui from './uiReducer'
 
 export default combineReducers({
@@ -14,5 +15,6 @@ export default combineReducers({
 	tags,
 	commits,
 	issues,
+	pulls,
 	ui
 })

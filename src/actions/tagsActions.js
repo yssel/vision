@@ -1,48 +1,4 @@
-import { authenticate, authenticateRest } from './fetchActions'
-
-async function isTagIncludedReq(user, repo, tag, commit){
-	let link = `https://api.github.com/repos/${user}/${repo}/compare/${commit}...${tag}`;
-	let response = await authenticateRest(link, true);
-	let included = (response.status === 'behind' ||  response.status === 'identical') ? true : false 
-	return included;
-}
-
-export function isTagIncluded(user, repo, tag, commit){
-	return async function (dispatch){
-		dispatch({ type: 'CHECK_TAG'})
-
-		try{
-			let response = await isTagIncludedReq(user, repo, tag, commit)
-			if(!response.errors)
-				dispatch({
-					type: 'CHECK_TAG_FULFILLED',
-					payload: {
-						tag,
-						valid: response
-					}
-				})
-			else{
-				dispatch({ 
-					type: "CHECK_TAG_REJECTED",
-					payload: {
-						tag,
-						errors: response.errors
-					} 
-				})
-			}
-
-		}catch(err){
-			dispatch({ 
-				type: "CHECK_TAG_REJECTED",
-				payload: {
-					tag,
-					errors: err
-				} 
-			})
-		}
-
-	}
-}
+import { authenticate } from './fetchActions'
 
 async function fetchSelectedTag(username, reponame, endCursor){
 

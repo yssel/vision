@@ -5,6 +5,21 @@ export default function branchesReducer(state = {
 	errors: null
 }, action){
 	switch (action.type) {
+		case "SET_BRANCH" : {
+			return {
+				...state,
+				data: {
+					branches: {
+						...state.data.branches,
+						[action.payload.branch]: {
+							...state.data.branches[action.payload.branch],
+							[action.payload.field]: action.payload.value
+						}
+					}
+				}
+			}
+		}
+
 		case "FETCH_BRANCHES": {
 			return {
 				...state,
