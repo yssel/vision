@@ -5,6 +5,21 @@ export default function tagsReducer(state = {
 	errors: null
 }, action){
 	switch (action.type) {
+		case "SET_TAG" : {
+			return {
+				...state,
+				data: {
+					tags: {
+						...state.data.tags,
+						[action.payload.tag]: {
+							...state.data.tags[action.payload.tag],
+							[action.payload.field]: action.payload.value
+						}
+					}
+				}
+			}
+		}
+
 		case "FETCH_TAGS": {
 			return {
 				...state,

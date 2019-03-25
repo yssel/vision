@@ -92,3 +92,14 @@ export function fetchTags(username, reponame){
 		
 	}
 }
+
+export function updateTag(tag, field, value){
+	return{
+		type: "SET_TAG",
+		payload: {
+			tag,
+			field,
+			value
+		}
+	}
+}

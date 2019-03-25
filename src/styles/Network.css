@@ -51,7 +51,8 @@
 }
 
 .commit-node{
-	fill: black;
+	stroke-width: 3.5px;
+	fill: white;
 	cursor: default;
 }
 
@@ -61,7 +62,7 @@
 
 .pull-req{
 	stroke-linecap: round;
-	stroke-dasharray: 2, 4;
+	stroke-dasharray: 3, 5;
 	stroke-width: 1.5px;
 }
 

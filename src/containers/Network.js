@@ -2,6 +2,7 @@ import React, { Component} from 'react';
 import { connect } from 'react-redux';
 import { fetchCommits, updateCommits, fetchFiles } from '../actions/commitsActions'
 import { updateBranch } from '../actions/branchesActions'
+import { updateTag } from '../actions/tagsActions'
 import { fetchIssue } from '../actions/issuesActions'
 import { fetchPulls } from '../actions/pullsActions'
 import { setCanvasDisplay } from '../actions/uiActions'
@@ -27,7 +28,7 @@ class Network extends Component{
             TRANS_Y: 0,
             GRAPH_X: 0,
             GRAPH_Y: 0,
-            NODE_RADIUS: 6,
+            NODE_RADIUS: 4,
             INTERVAL_X: 20,
             INTERVAL_Y: 30,
             MASTER_Y: 20,
@@ -365,7 +366,8 @@ class Network extends Component{
                 branch = branchesQ.shift()
                 // dequeue next branches with the same commit pointing to
                 while(!!branchesQ.length && branchesQ[0][1].sha === branch[1].sha){
-                    branchesQ.shift()
+                    let dup = branchesQ.shift()
+                    this.props.updateBranch(dup[0], 'commit', i)
                 }
             }
 
@@ -373,7 +375,8 @@ class Network extends Component{
                 tag = tagsQ.shift()
                 // dequeue next tags with the same commit pointing to
                 while(!!tagsQ.length && tagsQ[0][1].sha === tag[1].sha){
-                    tagsQ.shift()
+                    let dup = tagsQ.shift()
+                    this.props.updateTag(dup[0], 'commit', i)
                 }
             }
 
@@ -391,6 +394,8 @@ class Network extends Component{
             while(!!branchesQ.length && branch && new Date(branch[1].committedDate) > new Date(commit.commit.committer.date)){
                 if(!branch[1].dup) removedStr += branch[0]
                 else removedStr += ', ' + branch[0]
+
+                this.props.updateBranch(branch[0], 'commit', null)
                 branch = branchesQ.shift()
             }
 
@@ -398,6 +403,8 @@ class Network extends Component{
             while(!!tagsQ.length && tag && new Date(tag[1].committedDate) > new Date(commit.commit.committer.date)){
                 if(!tag[1].dup) removedStr += tag[0]
                 else removedStr += ', ' + tag[0]
+
+                this.props.updateTag(tag[0], 'commit', null)
                 tag = tagsQ.shift()
             }
 
@@ -429,6 +436,8 @@ class Network extends Component{
                 // Get new branch
                 branch = null
             }else if(tag && commit.sha === tag[1].sha){
+                this.props.updateTag(tag[0], 'commit', i)
+
                 let text = tag[1].others ? tag[0] + tag[1].others : tag[0]
                 tagGroup.append('text')
                     .attr('class', 'tag-name')
@@ -486,359 +495,373 @@ class Network extends Component{
         let branches = this.props.branches;
         let commits = this.props.commits;
 
+        console.log(branches)
+        console.log(commits)
+        console.log(pulls)
+
         let paths = {}
         let i,j
         for(i=0; i<pulls.length; i++){
-            let commit = commits[branches[pulls[i].base.ref].commit];
-            let parent = commits[branches[pulls[i].head.ref].commit];
-            let color = commit.y
+            let base = branches[pulls[i].base.ref].commit;
+            let head = branches[pulls[i].head.ref].commit
+            console.log(base)
+            console.log(head)
 
-            if(commit.x < parent.x) {
-                commit = parent;
-                parent = commits[branches[pulls[i].base.ref].commit];
-                color = parent.y;
-            }
+            if(base !== null && head !== null){                
+                let commit = commits[base];
+                let parent = commits[head];
+                console.log(commit)
+                console.log(parent)
 
-            if(!paths[color]) paths[color] = []
+                let color = commit.y
 
-            // Parent on same row
-            if(parent.y == commit.y){
-                // draw straight path
-                paths[color].push({
-                    mx: commit.x, 
-                    my: commit.y, 
-                    cx1: commit.x-this.state.INTERVAL_X, 
-                    cy1: commit.y,
-                    cx2: parent.x+this.state.INTERVAL_X,
-                    cy2: parent.y,
-                    cx: parent.x,
-                    cy: parent.y
-                })
-            }
-            // Parent is below
-            else if(parent.y > commit.y){
-                // Immediate below
-                if(parent.y === (commit.y-this.state.INTERVAL_Y)){
-                    // Immediate left
-                    if(parent.x ===(commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
+                if(commit.x < parent.x) {
+                    commit = commits[head];
+                    parent = commits[base];
+                    color = parent.y;
+                }
+
+                if(!paths[color]) paths[color] = []
+
+                // Parent on same row
+                if(parent.y == commit.y){
+                    // draw straight path
+                    paths[color].push({
+                        mx: commit.x, 
+                        my: commit.y, 
+                        cx1: commit.x-this.state.INTERVAL_X, 
+                        cy1: commit.y,
+                        cx2: parent.x+this.state.INTERVAL_X,
+                        cy2: parent.y,
+                        cx: parent.x,
+                        cy: parent.y
+                    })
+                }
+                // Parent is below
+                else if(parent.y > commit.y){
+                    // Immediate below
+                    if(parent.y === (commit.y-this.state.INTERVAL_Y)){
+                        // Immediate left
+                        if(parent.x ===(commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
+                                // Half Down, Half left
+                                paths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y+(0.5*this.state.INTERVAL_Y)
+                                })
+
+                                // Half Left, half down
+                                paths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: parent.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: parent.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                        }
+                        // Far left
+                        else{
+                        
                             // Half Down, Half left
                             paths[color].push({
                                 mx: commit.x,
                                 my: commit.y,
                                 cx1: commit.x,
-                                cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                cy1:commit.y+(0.5*this.state.INTERVAL_Y),
                                 cx2: commit.x,
                                 cy2: commit.y+(0.5*this.state.INTERVAL_Y),
                                 cx: commit.x-(0.5*this.state.INTERVAL_X),
                                 cy: commit.y+(0.5*this.state.INTERVAL_Y)
                             })
-
-                            // Half Left, half down
+                            // // Left
                             paths[color].push({
                                 mx: commit.x-(0.5*this.state.INTERVAL_X),
-                                my: commit.y+(0.5*this.state.INTERVAL_Y),
+                                my:commit.y+(0.5*this.state.INTERVAL_Y),
+                                cx1: commit.x-(0.5*this.state.INTERVAL_X),
+                                cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                cx2: commit.x-(0.5*this.state.INTERVAL_X),
+                                cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                cx: parent.x+(0.5*this.state.INTERVAL_X),
+                                cy: parent.y-(0.5*this.state.INTERVAL_Y)
+                            })
+                            // // Half left, Half Down
+                            paths[color].push({
+                                mx: parent.x+(0.5*this.state.INTERVAL_X),
+                                my: parent.y-(0.5*this.state.INTERVAL_Y),
                                 cx1: parent.x,
                                 cy1: parent.y-(0.5*this.state.INTERVAL_Y),
                                 cx2: parent.x,
                                 cy2: parent.y-(0.5*this.state.INTERVAL_Y),
                                 cx: parent.x,
-                                cy: parent.y
+                                y: parent.y
                             })
+                            }
+                        
                     }
-                    // Far left
+                    // Far below
                     else{
-                    
-                        // Half Down, Half left
-                        paths[color].push({
-                            mx: commit.x,
-                            my: commit.y,
-                            cx1: commit.x,
-                            cy1:commit.y+(0.5*this.state.INTERVAL_Y),
-                            cx2: commit.x,
-                            cy2: commit.y+(0.5*this.state.INTERVAL_Y),
-                            cx: commit.x-(0.5*this.state.INTERVAL_X),
-                            cy: commit.y+(0.5*this.state.INTERVAL_Y)
-                        })
-                        // // Left
-                        paths[color].push({
-                            mx: commit.x-(0.5*this.state.INTERVAL_X),
-                            my:commit.y+(0.5*this.state.INTERVAL_Y),
-                            cx1: commit.x-(0.5*this.state.INTERVAL_X),
-                            cy1: commit.y+(0.5*this.state.INTERVAL_Y),
-                            cx2: commit.x-(0.5*this.state.INTERVAL_X),
-                            cy2: commit.y+(0.5*this.state.INTERVAL_Y),
-                            cx: parent.x+(0.5*this.state.INTERVAL_X),
-                            cy: parent.y-(0.5*this.state.INTERVAL_Y)
-                        })
-                        // // Half left, Half Down
-                        paths[color].push({
-                            mx: parent.x+(0.5*this.state.INTERVAL_X),
-                            my: parent.y-(0.5*this.state.INTERVAL_Y),
-                            cx1: parent.x,
-                            cy1: parent.y-(0.5*this.state.INTERVAL_Y),
-                            cx2: parent.x,
-                            cy2: parent.y-(0.5*this.state.INTERVAL_Y),
-                            cx: parent.x,
-                            y: parent.y
-                        })
+                        // Immediate left
+                        if(parent.x ===(commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
+                            
+                                // Half Down, Half left
+                                paths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y+(0.5*this.state.INTERVAL_Y)
+                                })
+
+                                // Half Left, Half Down
+                                paths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: commit.y+this.state.INTERVAL_Y
+                                })
+
+                                // Down straight
+                                paths[color].push({
+                                    mx: parent.x,
+                                    my: commit.y+this.state.INTERVAL_Y,
+                                    cx1: parent.x,
+                                    cy1: commit.y+this.state.INTERVAL_Y,
+                                    cx2: parent.x,
+                                    cy2: commit.y+this.state.INTERVAL_Y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            
                         }
+                        // Far left
+                        else{
+                            
+                                // Half down, Half left
+                                paths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y+(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Left straight
+                                paths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx1: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y+(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Half left, Half down
+                                paths[color].push({
+                                    mx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    my: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: commit.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: commit.y+this.state.INTERVAL_Y
+                                })
+                                // Down straight
+                                paths[color].push({
+                                    mx: parent.x,
+                                    my: commit.y+this.state.INTERVAL_Y,
+                                    cx1: parent.x,
+                                    cy1: commit.y+this.state.INTERVAL_Y,
+                                    cx2: parent.x,
+                                    cy2: commit.y+this.state.INTERVAL_Y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            
+                        }
+
+                    }
+                }
+                // Parent is above
+                else{
                     
-                }
-                // Far below
-                else{
-                    // Immediate left
-                    if(parent.x ===(commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
-                        
-                            // Half Down, Half left
-                            paths[color].push({
-                                mx: commit.x,
-                                my: commit.y,
-                                cx1: commit.x,
-                                cy1: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx2: commit.x,
-                                cy2: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx: commit.x-(0.5*this.state.INTERVAL_X),
-                                cy: commit.y+(0.5*this.state.INTERVAL_Y)
-                            })
-
-                            // Half Left, Half Down
-                            paths[color].push({
-                                mx: commit.x-(0.5*this.state.INTERVAL_X),
-                                my: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx1: parent.x,
-                                cy1: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx2: parent.x,
-                                cy2: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx: parent.x,
-                                cy: commit.y+this.state.INTERVAL_Y
-                            })
-
-                            // Down straight
-                            paths[color].push({
-                                mx: parent.x,
-                                my: commit.y+this.state.INTERVAL_Y,
-                                cx1: parent.x,
-                                cy1: commit.y+this.state.INTERVAL_Y,
-                                cx2: parent.x,
-                                cy2: commit.y+this.state.INTERVAL_Y,
-                                cx: parent.x,
-                                cy: parent.y
-                            })
-                        
+                    // Immediate above
+                    if(parent.y === (commit.y-this.state.INTERVAL_Y)){
+                        // Immediate left
+                        if(parent.x+this.state.INTERVAL_X+(2*this.state.NODE_RADIUS) === commit.x){
+                            
+                                // Half up, Half left
+                                paths[color].push({
+                                    mx: commit.x, 
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y-(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Half left, Half up
+                                paths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: parent.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: parent.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            
+                        }
+                        // Far left
+                        else{
+                            
+                                // Half up, Half left
+                                paths[color].push({
+                                    mx: commit.x, 
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y-(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Left straight
+                                paths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx1: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    cy: parent.y+(0.5*this.state.INTERVAL_Y),
+                                })
+                                // Half left, Half up
+                                paths[color].push({
+                                    mx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    my: parent.y+(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: parent.y+(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: parent.y+(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            
+                        }
                     }
-                    // Far left
+                    // Far above
                     else{
-                        
-                            // Half down, Half left
-                            paths[color].push({
-                                mx: commit.x,
-                                my: commit.y,
-                                cx1: commit.x,
-                                cy1: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx2: commit.x,
-                                cy2: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx: commit.x-(0.5*this.state.INTERVAL_X),
-                                cy: commit.y+(0.5*this.state.INTERVAL_Y)
-                            })
-                            // Left straight
-                            paths[color].push({
-                                mx: commit.x-(0.5*this.state.INTERVAL_X),
-                                my: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx1: commit.x-(0.5*this.state.INTERVAL_X),
-                                cy1: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx2: commit.x-(0.5*this.state.INTERVAL_X),
-                                cy2: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx: parent.x+(0.5*this.state.INTERVAL_X),
-                                cy: commit.y+(0.5*this.state.INTERVAL_Y)
-                            })
-                            // Half left, Half down
-                            paths[color].push({
-                                mx: parent.x+(0.5*this.state.INTERVAL_X),
-                                my: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx1: parent.x,
-                                cy1: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx2: parent.x,
-                                cy2: commit.y+(0.5*this.state.INTERVAL_Y),
-                                cx: parent.x,
-                                cy: commit.y+this.state.INTERVAL_Y
-                            })
-                            // Down straight
-                            paths[color].push({
-                                mx: parent.x,
-                                my: commit.y+this.state.INTERVAL_Y,
-                                cx1: parent.x,
-                                cy1: commit.y+this.state.INTERVAL_Y,
-                                cx2: parent.x,
-                                cy2: commit.y+this.state.INTERVAL_Y,
-                                cx: parent.x,
-                                cy: parent.y
-                            })
-                        
-                    }
+                        // Immediate left
+                        if(parent.x == (commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
+                            
+                                // Half up, Half left
+                                paths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y-(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Half left, Half up
+                                paths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: commit.y-this.state.INTERVAL_Y
+                                })
+                                // Up straight
+                                paths[color].push({
+                                    mx: parent.x,
+                                    my: commit.y-this.state.INTERVAL_Y,
+                                    cx1: parent.x,
+                                    cy1: commit.y-this.state.INTERVAL_Y,
+                                    cx2: parent.x,
+                                    cy2: parent.y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })
+                            
+                        }
+                        // Far left
+                        else{
+                    
+                                // Half up, Half left
+                                paths[color].push({
+                                    mx: commit.x,
+                                    my: commit.y,
+                                    cx1: commit.x,
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: commit.x,
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y-(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Left straight
+                                paths[color].push({
+                                    mx: commit.x-(0.5*this.state.INTERVAL_X),
+                                    my: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x+(0.5*this.state.INTERVAL_X),
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x+(0.5*this.state.INTERVAL_X),
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    cy: commit.y-(0.5*this.state.INTERVAL_Y)
+                                })
+                                // Half left, Half up
+                                paths[color].push({
+                                    mx: parent.x+(0.5*this.state.INTERVAL_X),
+                                    my: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx1: parent.x,
+                                    cy1: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx2: parent.x,
+                                    cy2: commit.y-(0.5*this.state.INTERVAL_Y),
+                                    cx: parent.x,
+                                    cy: commit.y-this.state.INTERVAL_Y
+                                })
+                                // Up straight
+                                paths[color].push({
+                                    mx: parent.x,
+                                    my: commit.y-this.state.INTERVAL_Y,
+                                    cx1: parent.x,
+                                    cy1: parent.y,
+                                    cx2: parent.x,
+                                    cy2: parent.y,
+                                    cx: parent.x,
+                                    cy: parent.y
+                                })                                
+                            
+                        }
 
-                }
-            }
-            // Parent is above
-            else{
-                
-                // Immediate above
-                if(parent.y === (commit.y-this.state.INTERVAL_Y)){
-                    // Immediate left
-                    if(parent.x+this.state.INTERVAL_X+(2*this.state.NODE_RADIUS) === commit.x){
-                        
-                            // Half up, Half left
-                            paths[color].push({
-                                mx: commit.x, 
-                                my: commit.y,
-                                cx1: commit.x,
-                                cy1: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx2: commit.x,
-                                cy2: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx: commit.x-(0.5*this.state.INTERVAL_X),
-                                cy: commit.y-(0.5*this.state.INTERVAL_Y)
-                            })
-                            // Half left, Half up
-                            paths[color].push({
-                                mx: commit.x-(0.5*this.state.INTERVAL_X),
-                                my: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx1: parent.x,
-                                cy1: parent.y+(0.5*this.state.INTERVAL_Y),
-                                cx2: parent.x,
-                                cy2: parent.y+(0.5*this.state.INTERVAL_Y),
-                                cx: parent.x,
-                                cy: parent.y
-                            })
-                        
                     }
-                    // Far left
-                    else{
-                        
-                            // Half up, Half left
-                            paths[color].push({
-                                mx: commit.x, 
-                                my: commit.y,
-                                cx1: commit.x,
-                                cy1: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx2: commit.x,
-                                cy2: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx: commit.x-(0.5*this.state.INTERVAL_X),
-                                cy: commit.y-(0.5*this.state.INTERVAL_Y)
-                            })
-                            // Left straight
-                            paths[color].push({
-                                mx: commit.x-(0.5*this.state.INTERVAL_X),
-                                my: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx1: commit.x-(0.5*this.state.INTERVAL_X),
-                                cy1: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx2: commit.x-(0.5*this.state.INTERVAL_X),
-                                cy2: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx: parent.x+(0.5*this.state.INTERVAL_X),
-                                cy: parent.y+(0.5*this.state.INTERVAL_Y),
-                            })
-                            // Half left, Half up
-                            paths[color].push({
-                                mx: parent.x+(0.5*this.state.INTERVAL_X),
-                                my: parent.y+(0.5*this.state.INTERVAL_Y),
-                                cx1: parent.x,
-                                cy1: parent.y+(0.5*this.state.INTERVAL_Y),
-                                cx2: parent.x,
-                                cy2: parent.y+(0.5*this.state.INTERVAL_Y),
-                                cx: parent.x,
-                                cy: parent.y
-                            })
-                        
-                    }
-                }
-                // Far above
-                else{
-                    // Immediate left
-                    if(parent.x == (commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
-                        
-                            // Half up, Half left
-                            paths[color].push({
-                                mx: commit.x,
-                                my: commit.y,
-                                cx1: commit.x,
-                                cy1: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx2: commit.x,
-                                cy2: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx: commit.x-(0.5*this.state.INTERVAL_X),
-                                cy: commit.y-(0.5*this.state.INTERVAL_Y)
-                            })
-                            // Half left, Half up
-                            paths[color].push({
-                                mx: commit.x-(0.5*this.state.INTERVAL_X),
-                                my: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx1: parent.x,
-                                cy1: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx2: parent.x,
-                                cy2: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx: parent.x,
-                                cy: commit.y-this.state.INTERVAL_Y
-                            })
-                            // Up straight
-                            paths[color].push({
-                                mx: parent.x,
-                                my: commit.y-this.state.INTERVAL_Y,
-                                cx1: parent.x,
-                                cy1: commit.y-this.state.INTERVAL_Y,
-                                cx2: parent.x,
-                                cy2: parent.y,
-                                cx: parent.x,
-                                cy: parent.y
-                            })
-                        
-                    }
-                    // Far left
-                    else{
-                
-                            // Half up, Half left
-                            paths[color].push({
-                                mx: commit.x,
-                                my: commit.y,
-                                cx1: commit.x,
-                                cy1: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx2: commit.x,
-                                cy2: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx: commit.x-(0.5*this.state.INTERVAL_X),
-                                cy: commit.y-(0.5*this.state.INTERVAL_Y)
-                            })
-                            // Left straight
-                            paths[color].push({
-                                mx: commit.x-(0.5*this.state.INTERVAL_X),
-                                my: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx1: parent.x+(0.5*this.state.INTERVAL_X),
-                                cy1: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx2: parent.x+(0.5*this.state.INTERVAL_X),
-                                cy2: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx: parent.x+(0.5*this.state.INTERVAL_X),
-                                cy: commit.y-(0.5*this.state.INTERVAL_Y)
-                            })
-                            // Half left, Half up
-                            paths[color].push({
-                                mx: parent.x+(0.5*this.state.INTERVAL_X),
-                                my: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx1: parent.x,
-                                cy1: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx2: parent.x,
-                                cy2: commit.y-(0.5*this.state.INTERVAL_Y),
-                                cx: parent.x,
-                                cy: commit.y-this.state.INTERVAL_Y
-                            })
-                            // Up straight
-                            paths[color].push({
-                                mx: parent.x,
-                                my: commit.y-this.state.INTERVAL_Y,
-                                cx1: parent.x,
-                                cy1: parent.y,
-                                cx2: parent.x,
-                                cy2: parent.y,
-                                cx: parent.x,
-                                cy: parent.y
-                            })                                
-                        
-                    }
-
                 }
             }
         }
@@ -1636,7 +1659,7 @@ class Network extends Component{
                 .attr('cx', (d) => (Number(d.x-offset)))
                 .attr('cy', (d) => d.y)
                 .attr('r', networkClass.state.NODE_RADIUS)
-                .attr('fill', (d) => colorScale(d.y))
+                .attr('stroke', (d) => colorScale(d.y))
                 // .attr('fill', (d) => `url(#${d.commit.author.name.replace(/\s/g, '')})`)
             .on('mouseover', function(d){
                 networkClass.setState({ commit_viewed: d })
@@ -2014,6 +2037,7 @@ function mapDispatchToProps(dispatch){
         fetchPulls: async (owner, name, type, fetchPoint) => await dispatch(fetchPulls(owner, name)),
         updateCommits: (commits) => dispatch(updateCommits(commits)),
         updateBranch: (branch, field, value) => dispatch(updateBranch(branch, field, value)),
+        updateTag: (tag, field, value) => dispatch(updateTag(tag, field, value)),
         setCanvasDisplay: (field, value) => dispatch(setCanvasDisplay(field, value))
     }
 }

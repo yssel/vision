@@ -48,7 +48,6 @@ class Main extends Component {
 	}
 
 	checkout = (result) => {
-		console.log('result', result)
 		this.setState({
 			network_id: result.id,
 			checkout: result.type,
@@ -110,17 +109,21 @@ class Main extends Component {
 							</span>
 							<span id='reponame' className='c-white bold fs-14'>{this.props.reponame}</span>
 						</div>
-						<div id='search'>
-						<div style={{paddingRight: 8, fontSize: 12, color: 'white'}}>Graph : </div>
-						<SearchBox 
-							id='search-box'
-							database={this.state.database}
-							onResultSelect={this.checkout}
-							resetOnFocus={true}
-							initValue={this.state.checkout_from}
-							master_name={this.props.master_name}
-						/>
-						</div>
+						<Switch>
+							<Route exact path='/:username/:reponame'>
+								<div id='search'>
+								<div style={{paddingRight: 8, fontSize: 12, color: 'white'}}>Graph : </div>
+								<SearchBox 
+									id='search-box'
+									database={this.state.database}
+									onResultSelect={this.checkout}
+									resetOnFocus={true}
+									initValue={this.state.checkout_from}
+									master_name={this.props.master_name}
+								/>
+								</div>
+							</Route>
+						</Switch>
 					</div>
 					<div id='main'>
 						{
