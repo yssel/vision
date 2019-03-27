@@ -54,9 +54,9 @@
 #bar i{ color: white; }
 
 #bar{
-	padding-left: 15px;
-	padding-right: 15px;
-	width: calc(95vw - 30px);
+	padding-left: 5%;
+	padding-right: 5%;
+	width: 95vw;
 	height: var(--bar-height);
 	background: var(--color-1);
 	display: table-cell;
@@ -82,4 +82,12 @@
 	width: calc(100vw - var(--sidenav-width));
 	height: 100vh;
 	display: inline-block;
+	background: var(--color-lb);
+}
+
+#main{
+	position: relative;
+	height: calc(100% - var(--bar-height));
+	overflow: auto;
+	/*overflow-y: scroll;*/
 }

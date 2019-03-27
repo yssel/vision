@@ -1,0 +1,89 @@
+#stats-page{
+	display: block;
+	padding-top: 3%;
+	padding-left: 10%;
+	padding-right: 10%;
+	font-family: 'Assistant';
+}
+
+#stats-page .header{
+	font-family: 'Poppins';
+	font-size: 1em;
+	font-weight: 600;
+}
+
+#stats-page .subheader{
+	font-family: 'Source Sans Pro';
+	font-size: 0.9em;
+	font-weight: 400;
+}
+
+#overview{
+	display: grid;
+	grid-template-columns: auto auto auto;
+}
+
+#overview .heading{
+	font-weight: 600;
+	font-family: 'Josefin Sans';
+	font-size: 2em;
+}
+
+#overview .sub{
+	font-family: 'Josefin Sans';
+	font-size: 0.8em;
+}
+
+#overview .detail{
+	font-family: 'Poppins';
+	padding-top: 10px;
+	padding-bottom: 10px;
+	font-size: 0.8em;
+	color: var(--color-dg);
+}
+
+#row-1{
+	margin-top: 40px;
+	display: grid;
+	grid-template-columns: 45% auto auto;
+	grid-template-rows: 30vh;
+	grid-column-gap: 10px;
+}
+
+#row-2{
+	margin-top: 40px; 
+	display: grid;
+	grid-template-columns: 35% auto;
+	grid-template-rows: 30vh;
+	grid-column-gap: 10px;
+}
+
+#row-3{
+	margin-top: 40px;
+	display: grid;
+	grid-template-columns: 60% auto;
+	grid-template-rows: 100px 30vh minmax(150px, auto);
+	grid-gap: 10px;
+}
+
+#milestones{
+	grid-row-start: 1;
+	grid-row-end: 3;
+	grid-column-start: 1;
+	grid-column-end: 2;
+}
+
+#pull-requests{
+	grid-row-start: 1;
+	grid-row-end: 2;
+}
+
+#commits-activity{
+	grid-row: 3;
+}
+
+#contributors{
+	grid-column: 2;
+	grid-row-start: 2;
+	grid-row-end: 4;
+}

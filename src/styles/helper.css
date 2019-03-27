@@ -1,3 +1,11 @@
+.inline-block {
+	display: inline-block;
+}
+
+.block{
+	display: block;
+}
+
 .mr-30{ margin-right: 30px }
 .mr-15{ margin-right: 15px }
 .mr-10{ margin-right: 10px }

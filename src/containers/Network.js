@@ -495,23 +495,15 @@ class Network extends Component{
         let branches = this.props.branches;
         let commits = this.props.commits;
 
-        console.log(branches)
-        console.log(commits)
-        console.log(pulls)
-
         let paths = {}
         let i,j
         for(i=0; i<pulls.length; i++){
             let base = branches[pulls[i].base.ref].commit;
             let head = branches[pulls[i].head.ref].commit
-            console.log(base)
-            console.log(head)
 
             if(base !== null && head !== null){                
                 let commit = commits[base];
                 let parent = commits[head];
-                console.log(commit)
-                console.log(parent)
 
                 let color = commit.y
 
@@ -1565,7 +1557,7 @@ class Network extends Component{
         // Get X and Y Coordinates
         this.props.updateCommits(commitsWithYandX)
         let commits = commitsWithYandX.slice()
-        let height = d3.max(commitsWithYandX.map(commit => commit.y)) + MARGINS.bottom
+        let height = d3.max(commitsWithYandX.map(commit => commit.y))
 
         let zoom = d3.zoom()
                 .scaleExtent([1, 1])
@@ -1597,9 +1589,9 @@ class Network extends Component{
         // Draw paths
         let parentPaths = this.getParentPaths(commits)
         this.props.setCanvasDisplay("paths", parentPaths)
-        let colorScale = d3.scaleLinear().domain([this.state.MASTER_Y, height-this.state.MARGINS.bottom])
+        let colorScale = d3.scaleLinear().domain([this.state.MASTER_Y, height])
                             .interpolate(d3.interpolateHcl)
-                            .range([d3.rgb("#007AFF"), d3.rgb('#FFF500')])
+                            .range([d3.rgb("#660066"), d3.rgb('#FFF500')])
 
         let connections = networkGraph.selectAll('g')
             .data(Object.entries(parentPaths))
@@ -1660,7 +1652,7 @@ class Network extends Component{
                 .attr('cy', (d) => d.y)
                 .attr('r', networkClass.state.NODE_RADIUS)
                 .attr('stroke', (d) => colorScale(d.y))
-                // .attr('fill', (d) => `url(#${d.commit.author.name.replace(/\s/g, '')})`)
+                // .style('filter', (d) => 'drop-shadow( 0px 0px 5px ' + colorScale(d.y) + ')' )
             .on('mouseover', function(d){
                 networkClass.setState({ commit_viewed: d })
                 d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS*1.75)
@@ -1804,8 +1796,12 @@ class Network extends Component{
                         default:
                             break;
                     }
+
                     if(MAX_WIDTH < width-offset) x = x <= 0 ? x : 0
-                    if(MAX_HEIGHT < height) y = y <= 0 ? y : 0
+                    if(MAX_HEIGHT < height) {
+                        console.log('this')
+                        y = y <= 0 ? y : 0
+                    }
                     // Transform graph
                     network.transition()
                         .duration(350)
@@ -1838,165 +1834,163 @@ class Network extends Component{
 
         return(
             <div id='network-tab'>
-                <div id='network-page'>
-                    <div id='network-graph-wrapper'>
-                        <svg id='network-graph'></svg>  
-                    </div>
-                    <div id='commit-box-wrapper'>
-                        <div id='commit-box'>
-                            <div id='commit'>
-                                {commit_viewed &&
-                                <div className='wrapper'>
-                                    <div id='commit-details'>
-                                        {<div id='commit-author-img'>
-                                            <img src={commit_viewed.author ? commit_viewed.author.avatar_url : commit_viewed.commit.author.avatarUrl} alt=''/>
-                                        </div>}
-                                        <div id='commit-text'>
-                                            <div id='commit-info'>
-                                                <span id='commit-author' className='mr-5'>{commit_viewed.author ? commit_viewed.commit.author.name : commit_viewed.commit.author.user.name}</span>
-                                                <span id='commit-username' className='mr-5'>{`@${commit_viewed.author ? commit_viewed.author.login : commit_viewed.commit.author.name.replace(/\s/g, '')}`}</span>
-                                                <span id='commit-date'>{`on ${new Date(commit_viewed.commit.committer.date).toDateString()}`}</span>
-                                            </div>
-                                            <div id='commit-message'>
-                                                {commit_viewed.commit.message}
-                                            </div>
+                <div id='network-graph-wrapper'>
+                    <svg id='network-graph'></svg>  
+                </div>
+                <div id='commit-box-wrapper'>
+                    <div id='commit-box'>
+                        <div id='commit'>
+                            {commit_viewed &&
+                            <div className='wrapper'>
+                                <div id='commit-details'>
+                                    {<div id='commit-author-img'>
+                                        <img src={commit_viewed.author ? commit_viewed.author.avatar_url : commit_viewed.commit.author.avatarUrl} alt=''/>
+                                    </div>}
+                                    <div id='commit-text'>
+                                        <div id='commit-info'>
+                                            <span id='commit-author' className='mr-5'>{commit_viewed.author ? commit_viewed.commit.author.name : commit_viewed.commit.author.user.name}</span>
+                                            <span id='commit-username' className='mr-5'>{`@${commit_viewed.author ? commit_viewed.author.login : commit_viewed.commit.author.name.replace(/\s/g, '')}`}</span>
+                                            <span id='commit-date'>{`on ${new Date(commit_viewed.commit.committer.date).toDateString()}`}</span>
                                         </div>
-                                    </div>
-                                    <div className='files-changed header'>FILES CHANGED</div>
-                                    <div className='files status'>Status</div>
-                                    <div className='files label'>Changes</div>
-                                    <div className='files label'>Additions</div>
-                                    <div className='files label'>Deletions</div>
-                                    <div id='files-changed'>
-                                        {files_viewed && files_viewed.map((file, i) => {
-                                            return(
-                                                <div key={i} className='file'>
-                                                    <div className='filename'>{file.filename}</div>
-                                                    <div className='status'>{file.status}</div>
-                                                    <div className='changes'>{file.changes}</div>
-                                                    <div className='additions'>{file.additions}</div>
-                                                    <div className='deletions'>{file.deletions}</div>
-                                                </div>
-                                            )
-                                        })
-                                        }
+                                        <div id='commit-message'>
+                                            {commit_viewed.commit.message}
+                                        </div>
                                     </div>
                                 </div>
-                                }
+                                <div className='files-changed header'>FILES CHANGED</div>
+                                <div className='files status'>Status</div>
+                                <div className='files label'>Changes</div>
+                                <div className='files label'>Additions</div>
+                                <div className='files label'>Deletions</div>
+                                <div id='files-changed'>
+                                    {files_viewed && files_viewed.map((file, i) => {
+                                        return(
+                                            <div key={i} className='file'>
+                                                <div className='filename'>{file.filename}</div>
+                                                <div className='status'>{file.status}</div>
+                                                <div className='changes'>{file.changes}</div>
+                                                <div className='additions'>{file.additions}</div>
+                                                <div className='deletions'>{file.deletions}</div>
+                                            </div>
+                                        )
+                                    })
+                                    }
+                                </div>
                             </div>
-                            <div id='commit-issues'>
-                                <div className='wrapper'>
-                                    <div id='doing' className='issues'>
-                                        <div className='title'>IN PROGRESS</div>
-                                        <div className='issues-holder'>
-                                        {issues_viewed.doing && issues_viewed.doing.map((issue, i) => {
-                                            return(
-                                                <div key={i} className='issue'>
-                                                    <div className='issue-info'>
-                                                        <div className='issue-data'>
-                                                            <div className='issue-title'>{issue.title}</div>
-                                                            {issue.milestone && 
-                                                                <div className='issue-milestone'>
-                                                                    <i className="fas fa-flag"></i>
-                                                                    {issue.milestone.title}
-                                                                </div>
-                                                            }
-                                                        </div>
-                                                        
+                            }
+                        </div>
+                        <div id='commit-issues'>
+                            <div className='wrapper'>
+                                <div id='doing' className='issues'>
+                                    <div className='title'>IN PROGRESS</div>
+                                    <div className='issues-holder'>
+                                    {issues_viewed.doing && issues_viewed.doing.map((issue, i) => {
+                                        return(
+                                            <div key={i} className='issue'>
+                                                <div className='issue-info'>
+                                                    <div className='issue-data'>
+                                                        <div className='issue-title'>{issue.title}</div>
+                                                        {issue.milestone && 
+                                                            <div className='issue-milestone'>
+                                                                <i className="fas fa-flag"></i>
+                                                                {issue.milestone.title}
+                                                            </div>
+                                                        }
                                                     </div>
-                                                    {issue.labels.length > 0 && <div className='issue-labels'>
-                                                        {issue.labels.map((label, i) => {
-                                                            return(
-                                                                <div className='issue-label' key={i} 
-                                                                    style={{ 
-                                                                        background: `#${label.color}`,
-                                                                        color: this.getTextColor(label.color)
-                                                                    }}>
-
-                                                                    {label.name}
-                                                                </div>
-                                                            )
-                                                        })}
-                                                    </div>}
-                                                    <div className='divider'></div>
-                                                    {issue.assignees.length > 0 && <div className='issue-assignees'>
-                                                        {issue.assignees.map((user, i) => {
-                                                            return(
-                                                                <div className='issue-assignee' key={i}>
-                                                                    <img src={user.avatar_url}/>
-                                                                </div>
-                                                            )
-                                                        })}
-                                                    </div>}
+                                                    
                                                 </div>
-                                            )
-                                        })}
+                                                {issue.labels.length > 0 && <div className='issue-labels'>
+                                                    {issue.labels.map((label, i) => {
+                                                        return(
+                                                            <div className='issue-label' key={i} 
+                                                                style={{ 
+                                                                    background: `#${label.color}`,
+                                                                    color: this.getTextColor(label.color)
+                                                                }}>
+
+                                                                {label.name}
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>}
+                                                <div className='divider'></div>
+                                                {issue.assignees.length > 0 && <div className='issue-assignees'>
+                                                    {issue.assignees.map((user, i) => {
+                                                        return(
+                                                            <div className='issue-assignee' key={i}>
+                                                                <img src={user.avatar_url}/>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>}
+                                            </div>
+                                        )
+                                    })}
+                                    </div>
+                                    {
+                                        (!issues_viewed.doing || issues_viewed.doing.length === 0) &&
+                                        <div className='issue-empty'>
+                                            {
+                                                this.props.issue_fetching && 
+                                                <i className="fas fa-circle-notch fa-spin"></i>
+                                            }
                                         </div>
-                                        {
-                                            (!issues_viewed.doing || issues_viewed.doing.length === 0) &&
-                                            <div className='issue-empty'>
-                                                {
-                                                    this.props.issue_fetching && 
-                                                    <i className="fas fa-circle-notch fa-spin"></i>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
+                                    }
+                                </div>
 
-                                    <div id='done' className='issues'>
-                                        <div className='title'>DONE</div>
-                                        {issues_viewed.done && issues_viewed.done.map((issue, i) => {
-                                            return(
-                                                <div key={i} className='issue'>
-                                                    <div className='issue-info'>
-                                                        <div className='issue-data'>
-                                                            <div className='issue-title'>{issue.title}</div>
-                                                            {issue.milestone && 
-                                                                <div className='issue-milestone'>
-                                                                    <i className="fas fa-flag"></i>
-                                                                    {issue.milestone.title}
-                                                                </div>
-                                                            }
-                                                        </div>
-                                                        
+                                <div id='done' className='issues'>
+                                    <div className='title'>DONE</div>
+                                    {issues_viewed.done && issues_viewed.done.map((issue, i) => {
+                                        return(
+                                            <div key={i} className='issue'>
+                                                <div className='issue-info'>
+                                                    <div className='issue-data'>
+                                                        <div className='issue-title'>{issue.title}</div>
+                                                        {issue.milestone && 
+                                                            <div className='issue-milestone'>
+                                                                <i className="fas fa-flag"></i>
+                                                                {issue.milestone.title}
+                                                            </div>
+                                                        }
                                                     </div>
-                                                    {issue.labels.length > 0 && <div className='issue-labels'>
-                                                        {issue.labels.map((label, i) => {
-                                                            return(
-                                                                <div className='issue-label' key={i} 
-                                                                    style={{ 
-                                                                        background: `#${label.color}`,
-                                                                        color: this.getTextColor(label.color)
-                                                                    }}>
-
-                                                                    {label.name}
-                                                                </div>
-                                                            )
-                                                        })}
-                                                    </div>}
-                                                    <div className='divider'></div>
-                                                    {issue.assignees.length > 0 && <div className='issue-assignees'>
-                                                        {issue.assignees.map((user, i) => {
-                                                            return(
-                                                                <div className='issue-assignee' key={i}>
-                                                                    <img src={user.avatar_url}/>
-                                                                </div>
-                                                            )
-                                                        })}
-                                                    </div>}
+                                                    
                                                 </div>
-                                            )
-                                        })}
-                                        {
-                                            (!issues_viewed.done || issues_viewed.done.length === 0) &&
-                                            <div className='issue-empty'>
-                                                {
-                                                    this.props.issue_fetching && 
-                                                    <i className="fas fa-circle-notch fa-spin"></i>
-                                                }
+                                                {issue.labels.length > 0 && <div className='issue-labels'>
+                                                    {issue.labels.map((label, i) => {
+                                                        return(
+                                                            <div className='issue-label' key={i} 
+                                                                style={{ 
+                                                                    background: `#${label.color}`,
+                                                                    color: this.getTextColor(label.color)
+                                                                }}>
+
+                                                                {label.name}
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>}
+                                                <div className='divider'></div>
+                                                {issue.assignees.length > 0 && <div className='issue-assignees'>
+                                                    {issue.assignees.map((user, i) => {
+                                                        return(
+                                                            <div className='issue-assignee' key={i}>
+                                                                <img src={user.avatar_url}/>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>}
                                             </div>
-                                        }
-                                    </div>
+                                        )
+                                    })}
+                                    {
+                                        (!issues_viewed.done || issues_viewed.done.length === 0) &&
+                                        <div className='issue-empty'>
+                                            {
+                                                this.props.issue_fetching && 
+                                                <i className="fas fa-circle-notch fa-spin"></i>
+                                            }
+                                        </div>
+                                    }
                                 </div>
                             </div>
                         </div>
