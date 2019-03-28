@@ -15,6 +15,17 @@ async function fetchFilesReq(user, repo, sha){
 	return response.files;
 }
 
+export async function fetchBranchCommitsCount(user, repo, branch) {
+	let link = `https://api.github.com/repos/${user}/${repo}/commits?sha=${branch}&per_page=1`
+	// fetch header 
+	let response = await authenticateRest(link)
+	let headerLink = response.headers.get('Link')
+	// Parse link to get last page
+	let lastPage = headerLink.match(/&page=(\d*)>; rel="last"/)[1]
+	
+	return Number(lastPage)
+}
+
 async function fetchInitCommit(user, repo){
 	let link = `https://api.github.com/repos/${user}/${repo}/commits?per_page=1`
 	// fetch header 

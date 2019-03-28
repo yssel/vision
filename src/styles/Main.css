@@ -82,12 +82,11 @@
 	width: calc(100vw - var(--sidenav-width));
 	height: 100vh;
 	display: inline-block;
-	background: var(--color-lb);
+	background: var(--color-lg);
 }
 
 #main{
 	position: relative;
 	height: calc(100% - var(--bar-height));
 	overflow: auto;
-	/*overflow-y: scroll;*/
 }

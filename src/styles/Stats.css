@@ -7,9 +7,10 @@
 }
 
 #stats-page .header{
-	font-family: 'Poppins';
-	font-size: 1em;
+	font-family: 'Quicksand';
+	font-size: 14px;
 	font-weight: 600;
+	padding-bottom: 10px;
 }
 
 #stats-page .subheader{
@@ -20,7 +21,8 @@
 
 #overview{
 	display: grid;
-	grid-template-columns: auto auto auto;
+	grid-template-columns: auto 25% 25%;
+	grid-column-gap: 20px;
 }
 
 #overview .heading{
@@ -37,25 +39,73 @@
 #overview .detail{
 	font-family: 'Poppins';
 	padding-top: 10px;
-	padding-bottom: 10px;
 	font-size: 0.8em;
+	color: var(--color-dg);
+}
+
+.count{
+	display: grid;
+	grid-template-columns: 50% auto;
+}
+.count .graph {
+	position: relative;
+}
+
+.count .graph .percent{
+	font-family: 'Assistant';
+	font-weight: 600;
+	font-size: 12px;
+	position: absolute;
+	display: inline-block;
+	padding-top: 30px;
+	text-align: center;
+	width: 100%;
 	color: var(--color-dg);
 }
 
 #row-1{
 	margin-top: 40px;
 	display: grid;
-	grid-template-columns: 45% auto auto;
-	grid-template-rows: 30vh;
-	grid-column-gap: 10px;
+	grid-template-columns: auto 25% 25%;
+	grid-template-rows: 40vh;
+	grid-column-gap: 20px;
 }
+
+#row-1>div, #row-2>div, #row-3>div{
+	display: flex;
+	flex-direction: column;
+}
+
+#row-1>div .graph, #row-2>div .graph, #row-3>div .graph{
+	flex-grow: 1;
+}
+
+#row-1>div .graph{
+	background: white;
+	border-radius: 4px;
+	box-shadow: var(--box-shadow-light);
+	position: relative;
+}
+
+.graph svg{
+	width: 100%;
+	height: 100%;
+}
+
+.graph svg text{
+	font-family: 'Poppins';
+	font-weight: 600;
+}
+
+.graph{ position: relative; }
+.graph .title { position: absolute; top: 0; }
 
 #row-2{
 	margin-top: 40px; 
 	display: grid;
 	grid-template-columns: 35% auto;
 	grid-template-rows: 30vh;
-	grid-column-gap: 10px;
+	grid-column-gap: 20px;
 }
 
 #row-3{

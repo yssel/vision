@@ -102,3 +102,35 @@ export function fetchIssue(username, reponame, issueNumber){
 
 	}
 }
+
+export async function fetchIssuesCount1(user, repo, parameter=null, value=null) {
+	let link = `https://api.github.com/repos/${user}/${repo}/issues?per_page=1`
+	if(parameter && value) link += `&${parameter}=${value}`
+
+	// fetch header 
+	let response = await authenticateRest(link)
+	let headerLink = response.headers.get('Link')
+	// Parse link to get last page
+	let lastPage = headerLink.match(/&page=(\d*)>; rel="last"/)[1]
+	
+	return Number(lastPage)
+}
+
+export async function fetchIssuesCount(username, reponame){
+	const issuesFetch = authenticate().next().value
+
+	let query = `
+	query {
+		repository(owner: ${username}, name: ${reponame}){
+			open: issues(last: 1, states: OPEN){
+				totalCount
+			}
+			closed: issues(last: 1, states: CLOSED){
+				totalCount
+			}
+		}
+	}`
+
+	let response = await issuesFetch({ query })
+	return { open: response.data.repository.open.totalCount, closed: response.data.repository.closed.totalCount }
+}

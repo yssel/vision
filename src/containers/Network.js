@@ -1593,6 +1593,11 @@ class Network extends Component{
                             .interpolate(d3.interpolateHcl)
                             .range([d3.rgb("#660066"), d3.rgb('#FFF500')])
 
+        let yS = Object.keys(this.state.Y_X)
+        let colorScale1 = d3.scaleOrdinal()
+                            .domain(yS)
+                            .range(d3.quantize(t => d3.interpolateSpectral(t * 0.9), yS.length))
+
         let connections = networkGraph.selectAll('g')
             .data(Object.entries(parentPaths))
             .enter()
