@@ -1,0 +1,227 @@
+#repo-stats .heading{
+	color: var(--color-4);
+	font-weight: 600;
+	font-family: 'Josefin Sans';
+	font-size: 2em;
+}
+
+#repo-stats .sub{
+	color: white;
+	color: var(--color-3);
+	font-family: 'Josefin Sans';
+	font-size: 12px;
+}
+
+#repo-stats .detail{
+	font-family: 'Poppins';
+	padding-top: 10px;
+	font-size: 0.8em;
+	color: var(--color-2);
+}
+
+#commits-bar .graph-title{
+	position: absolute;
+	z-index: 1;
+	padding-top: 18px;
+	padding-left: 25px;
+	font-family: 'Source Sans Pro';
+	font-size: 16px;
+	font-weight: 700;
+}
+#commits-bar .graph-subtitle{
+	position: absolute;
+	z-index: 1;
+	padding-top: 38px;
+	padding-left: 25px;
+	font-family: 'Source Sans Pro';
+	font-size: 12px;
+	font-weight: 400;
+}
+
+#issues-line .graph-title, #prs-line .graph-title{
+	position: absolute;
+	z-index: 1;
+	padding-top: 10px;
+	padding-left: 12px;
+	font-family: 'Source Sans Pro';
+	font-size: 14px;
+	font-weight: 700;
+}
+#issues-line .graph-subtitle, #prs-line .graph-subtitle{
+	position: absolute;
+	z-index: 1;
+	padding-top: 25px;
+	padding-left: 12px;
+	font-family: 'Source Sans Pro';
+	font-size: 12px;
+	font-weight: 400;
+}
+
+#row-1{
+	padding-top: 40px;
+	display: grid;
+	grid-template-columns: 200px auto 35%;
+	grid-template-rows: 20vh 20vh;
+	grid-gap: 10px;
+}
+
+#row-1>div .graph{
+	width: 100%;
+	height: 100%;
+	background: white;
+	border-radius: 4px;
+	box-shadow: var(--box-shadow-light);
+	position: relative;
+	overflow: hidden;
+}
+
+#row-1>div .graph rect{
+	rx: 3;
+	ry: 3;
+}
+
+#repo-stats{
+	grid-column-start: 1;
+	grid-column-end: 2;
+	grid-row-start: 1;
+	grid-row-end: 3;
+	width: 100%;
+	height: calc(30vh - 3%);
+	z-index: 1;
+	color: var(--color-3);
+}
+
+#issue-stats, #milestone-stats{
+	font-weight: 400;
+	font-family: 'Quicksand';
+	font-size: 12px;
+}
+
+#repo-stats .progress{
+	margin-top: 10px;
+	margin-bottom: 5px;
+	width: 90%;
+	height: 5px;
+	background: rgba(115, 133, 152, 0.5);
+	border-radius: 5px;
+}
+
+#repo-stats .portion{
+	width: 0%;
+	border-radius: 5px;
+	height: 100%;
+	transition: width 2s;
+}
+
+#commits-bar{
+	grid-column-start: 2;
+	grid-column-end: 3;
+	grid-row-start: 1;
+	grid-row-end: 3;
+}
+
+#issues-line{
+	grid-column-start: 3;
+	grid-column-end: 4;
+	grid-row-start: 1;
+	grid-row-end: 2;
+}
+
+#prs-line{
+	grid-column-start: 3;
+	grid-column-end: 4;
+	grid-row-start: 2;
+	grid-row-end: 3;
+}
+
+/*Commits bar graph*/
+
+.commits-day{
+	color: var(--color-1);
+	font-size: 7px;
+}
+
+.charts-tick line{
+  fill: white;
+  visibility:hidden;
+}
+
+.chart-hlines line {
+	stroke-dasharray: 2,4;
+	stroke: lightgrey;
+	stroke-opacity: 0.5;
+	shape-rendering: crispEdges;
+}
+.chart-hlines path {stroke-width: 0;}
+
+/*Issues line graph*/
+
+#issues-backGradient .stop-top{
+	stop-color: rgba(5, 63, 94, 0.9);
+}
+
+#issues-backGradient .stop-middle{
+	stop-color: rgba(5, 63, 94, 0.5);
+}
+
+#issues-backGradient .stop-bottom{
+	stop-color: rgba(5, 63, 94, 0.2);
+}
+
+#issues-frontGradient .stop-top{
+	stop-color: rgba(248, 183, 57, 0.9);
+}
+
+#issues-frontGradient .stop-middle{
+	stop-color: rgba(248, 183, 57, 0.5);
+}
+
+#issues-frontGradient .stop-bottom{
+	stop-color: rgba(248, 183, 57, 0.2);
+}
+
+#issues-line-graph .back-fill{
+	fill: url(#issues-backGradient);
+	stroke-width: 0.5px;
+}
+
+#issues-line-graph .front-fill{
+	fill: url(#issues-frontGradient);
+	stroke-width: 0.5px;
+}
+
+/*PRS Line graph*/
+
+#prs-backGradient .stop-top{
+	stop-color: rgba(86, 7, 100, 0.9);
+}
+
+#prs-backGradient .stop-middle{
+	stop-color: rgba(86, 7, 100, 0.5);
+}
+
+#prs-backGradient .stop-bottom{
+	stop-color: rgba(86, 7, 100, 0.3);
+}
+
+#prs-frontGradient .stop-top{
+	stop-color: rgba(50, 219, 198, 0.9);
+}
+
+#prs-frontGradient .stop-middle{
+	stop-color: rgba(50, 219, 198, 0.5);
+}
+
+#prs-frontGradient .stop-bottom{
+	stop-color: rgba(50, 219, 198, 0.2);
+}
+
+#prs-line-graph .back-fill{
+	fill: url(#prs-backGradient);
+	stroke-width: 0.5px;
+}
+
+#prs-line-graph .front-fill{
+	fill: url(#prs-frontGradient);
+	stroke-width: 0.5px;
+}

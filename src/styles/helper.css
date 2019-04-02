@@ -5,7 +5,8 @@
 .block{
 	display: block;
 }
-
+.mu-10{margin-top: 10px}
+.mu-15{margin-top: 15px}
 .mr-30{ margin-right: 30px }
 .mr-15{ margin-right: 15px }
 .mr-10{ margin-right: 10px }

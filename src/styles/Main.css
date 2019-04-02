@@ -82,11 +82,24 @@
 	width: calc(100vw - var(--sidenav-width));
 	height: 100vh;
 	display: inline-block;
-	background: var(--color-lg);
+	background: var(--color-lb);
 }
 
 #main{
 	position: relative;
 	height: calc(100% - var(--bar-height));
 	overflow: auto;
+}
+
+#main::-webkit-scrollbar-track{
+	background-color: white;
+}
+
+#main::-webkit-scrollbar{
+	width: 10px;
+	background-color: white;
+}
+
+#main::-webkit-scrollbar-thumb{
+	background: var(--color-4);
 }

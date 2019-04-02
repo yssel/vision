@@ -1,90 +1,42 @@
 #stats-page{
 	display: block;
-	padding-top: 3%;
-	padding-left: 10%;
-	padding-right: 10%;
 	font-family: 'Assistant';
+	position: relative;
 }
 
 #stats-page .header{
-	font-family: 'Quicksand';
+	font-family: 'Assistant';
 	font-size: 14px;
 	font-weight: 600;
+	letter-spacing: 0.5px;
 	padding-bottom: 10px;
 }
 
 #stats-page .subheader{
-	font-family: 'Source Sans Pro';
-	font-size: 0.9em;
-	font-weight: 400;
-}
-
-#overview{
-	display: grid;
-	grid-template-columns: auto 25% 25%;
-	grid-column-gap: 20px;
-}
-
-#overview .heading{
-	font-weight: 600;
-	font-family: 'Josefin Sans';
-	font-size: 2em;
-}
-
-#overview .sub{
-	font-family: 'Josefin Sans';
-	font-size: 0.8em;
-}
-
-#overview .detail{
 	font-family: 'Poppins';
-	padding-top: 10px;
-	font-size: 0.8em;
-	color: var(--color-dg);
-}
-
-.count{
-	display: grid;
-	grid-template-columns: 50% auto;
-}
-.count .graph {
-	position: relative;
-}
-
-.count .graph .percent{
-	font-family: 'Assistant';
+	font-size: 0.75em;
 	font-weight: 600;
-	font-size: 12px;
-	position: absolute;
-	display: inline-block;
-	padding-top: 30px;
-	text-align: center;
-	width: 100%;
-	color: var(--color-dg);
 }
 
-#row-1{
-	margin-top: 40px;
-	display: grid;
-	grid-template-columns: auto 25% 25%;
-	grid-template-rows: 40vh;
-	grid-column-gap: 20px;
-}
-
-#row-1>div, #row-2>div, #row-3>div{
-	display: flex;
-	flex-direction: column;
+#row-1, #row-2, #row-3{
+	padding-left: 3%;
+	padding-right: 3%;
 }
 
 #row-1>div .graph, #row-2>div .graph, #row-3>div .graph{
 	flex-grow: 1;
 }
 
-#row-1>div .graph{
-	background: white;
-	border-radius: 4px;
-	box-shadow: var(--box-shadow-light);
-	position: relative;
+#row-2>div, #row-3>div{
+	display: flex;
+	flex-direction: column;
+}
+
+#bg{
+	position: absolute;
+	background: var(--color-1);
+	width: 100%;
+	height: 35vh;
 }
 
 .graph svg{
@@ -101,39 +53,17 @@
 .graph .title { position: absolute; top: 0; }
 
 #row-2{
-	margin-top: 40px; 
+	margin-top: 20px; 
 	display: grid;
-	grid-template-columns: 35% auto;
-	grid-template-rows: 30vh;
+	grid-template-columns: auto 50%;
+	grid-template-rows: 50vh;
 	grid-column-gap: 20px;
 }
 
 #row-3{
 	margin-top: 40px;
 	display: grid;
-	grid-template-columns: 60% auto;
-	grid-template-rows: 100px 30vh minmax(150px, auto);
+	grid-template-columns: 40% auto;
+	grid-template-rows: 100px 40vh minmax(150px, auto);
 	grid-gap: 10px;
-}
-
-#milestones{
-	grid-row-start: 1;
-	grid-row-end: 3;
-	grid-column-start: 1;
-	grid-column-end: 2;
-}
-
-#pull-requests{
-	grid-row-start: 1;
-	grid-row-end: 2;
-}
-
-#commits-activity{
-	grid-row: 3;
-}
-
-#contributors{
-	grid-column: 2;
-	grid-row-start: 2;
-	grid-row-end: 4;
 }

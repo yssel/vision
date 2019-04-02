@@ -134,8 +134,8 @@ async function fetchFrom(dispatch, user, repo, type, point){
 async function fetchRepoCommits(username, reponame, branchCursor = null, untilDate = null, sinceDate = null){
 	const commitsFetch = authenticate().next().value
 
-	let query = `query($owner:String!, $name:String!, $branchCursor: String, $untilDate: GitTimestamp) {
-	  repository(owner: $owner, name: $name) {
+	let query = `query($branchCursor: String, $untilDate: GitTimestamp) {
+	  repository(owner: "${username}", name: "${reponame}") {
 		# Fetch branches
 	    refs(first: 100, refPrefix: "refs/heads/", after: $branchCursor) {
 	      edges{
@@ -184,8 +184,6 @@ async function fetchRepoCommits(username, reponame, branchCursor = null, untilDa
 	}`
 
 	let variables = {
-		owner: 	username,
-		name: 	reponame,
 		branchCursor: branchCursor,
 		untilDate: untilDate
 	}
