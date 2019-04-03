@@ -1,64 +1,5 @@
-#repo-stats .heading{
-	color: var(--color-4);
-	font-weight: 600;
-	font-family: 'Josefin Sans';
-	font-size: 2em;
-}
-
-#repo-stats .sub{
-	color: white;
-	color: var(--color-3);
-	font-family: 'Josefin Sans';
-	font-size: 12px;
-}
-
-#repo-stats .detail{
-	font-family: 'Poppins';
-	padding-top: 10px;
-	font-size: 0.8em;
-	color: var(--color-2);
-}
-
-#commits-bar .graph-title{
-	position: absolute;
-	z-index: 1;
-	padding-top: 18px;
-	padding-left: 25px;
-	font-family: 'Source Sans Pro';
-	font-size: 16px;
-	font-weight: 700;
-}
-#commits-bar .graph-subtitle{
-	position: absolute;
-	z-index: 1;
-	padding-top: 38px;
-	padding-left: 25px;
-	font-family: 'Source Sans Pro';
-	font-size: 12px;
-	font-weight: 400;
-}
-
-#issues-line .graph-title, #prs-line .graph-title{
-	position: absolute;
-	z-index: 1;
-	padding-top: 10px;
-	padding-left: 12px;
-	font-family: 'Source Sans Pro';
-	font-size: 14px;
-	font-weight: 700;
-}
-#issues-line .graph-subtitle, #prs-line .graph-subtitle{
-	position: absolute;
-	z-index: 1;
-	padding-top: 25px;
-	padding-left: 12px;
-	font-family: 'Source Sans Pro';
-	font-size: 12px;
-	font-weight: 400;
-}
-
 #row-1{
-	padding-top: 40px;
+	padding-top: 10px;
 	display: grid;
 	grid-template-columns: 200px auto 35%;
 	grid-template-rows: 20vh 20vh;
@@ -81,6 +22,103 @@
 }
 
 #repo-stats{
+	padding-top: 20px;
+}
+
+#repo-stats .heading{
+	color: var(--color-4);
+	font-weight: 600;
+	font-family: 'Josefin Sans';
+	font-size: 2em;
+}
+
+#repo-stats .sub{
+	color: white;
+	color: var(--color-3);
+	font-family: 'Josefin Sans';
+	font-size: 12px;
+}
+
+#repo-stats .detail{
+	font-family: 'Poppins';
+	padding-top: 10px;
+	font-size: 0.8em;
+	color: var(--color-2);
+}
+
+#commits-bar{
+	position: relative;
+}
+
+#commits-bar .graph-title{
+	position: absolute;
+	z-index: 1;
+	padding-top: 18px;
+	padding-left: 25px;
+	font-family: 'Source Sans Pro';
+	font-size: 16px;
+	font-weight: 700;
+}
+#commits-bar .graph-subtitle{
+	position: absolute;
+	z-index: 1;
+	padding-top: 38px;
+	padding-left: 25px;
+	font-family: 'Source Sans Pro';
+	font-size: 12px;
+	font-weight: 400;
+}
+
+#commits-bar .graph-modes{
+	position: absolute;
+	z-index: 1;
+	padding-top: 18px;
+	font-family: 'Poppins';
+	font-size: 10px;
+	font-weight: 600;
+	right: 25px;
+}
+
+.graph-modes>div{
+	display: inline-block;
+	margin-left: 5px;
+	padding: 7px;
+	padding-top: 3px;
+	padding-bottom: 3px;
+	border-radius: 4px;
+	background: var(--color-lg);
+	cursor: default;
+}
+
+.graph-modes>div:hover{
+	background: var(--color-3);
+}
+
+.graph-modes>div.active{
+	background: var(--color-4);
+	color: white;
+}
+
+#issues-line .graph-title, #prs-line .graph-title{
+	position: absolute;
+	z-index: 1;
+	padding-top: 10px;
+	padding-left: 12px;
+	font-family: 'Source Sans Pro';
+	font-size: 14px;
+	font-weight: 700;
+}
+#issues-line .graph-subtitle, #prs-line .graph-subtitle{
+	position: absolute;
+	z-index: 1;
+	padding-top: 25px;
+	padding-left: 12px;
+	font-family: 'Source Sans Pro';
+	font-size: 12px;
+	font-weight: 400;
+}
+
+#repo-stats{
 	grid-column-start: 1;
 	grid-column-end: 2;
 	grid-row-start: 1;
@@ -93,11 +131,11 @@
 
 #issue-stats, #milestone-stats{
 	font-weight: 400;
-	font-family: 'Quicksand';
+	font-family: 'Poppins';
 	font-size: 12px;
 }
 
-#repo-stats .progress{
+#issue-stats .progress, #milestone-stats .progress{
 	margin-top: 10px;
 	margin-bottom: 5px;
 	width: 90%;
@@ -106,7 +144,7 @@
 	border-radius: 5px;
 }
 
-#repo-stats .portion{
+#issue-stats .portion, #milestone-stats .portion{
 	width: 0%;
 	border-radius: 5px;
 	height: 100%;

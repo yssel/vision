@@ -18,18 +18,9 @@
 	font-weight: 600;
 }
 
-#row-1, #row-2, #row-3{
+#row-1, #row-2{
 	padding-left: 3%;
 	padding-right: 3%;
-}
-
-#row-1>div .graph, #row-2>div .graph, #row-3>div .graph{
-	flex-grow: 1;
-}
-
-#row-2>div, #row-3>div{
-	display: flex;
-	flex-direction: column;
 }
 
 #bg{
@@ -51,19 +42,3 @@
 
 .graph{ position: relative; }
 .graph .title { position: absolute; top: 0; }
-
-#row-2{
-	margin-top: 20px; 
-	display: grid;
-	grid-template-columns: auto 50%;
-	grid-template-rows: 50vh;
-	grid-column-gap: 20px;
-}
-
-#row-3{
-	margin-top: 40px;
-	display: grid;
-	grid-template-columns: 40% auto;
-	grid-template-rows: 100px 40vh minmax(150px, auto);
-	grid-gap: 10px;
-}

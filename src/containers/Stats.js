@@ -2,9 +2,9 @@ import React, { Component} from 'react';
 import { connect } from 'react-redux';
 
 import { fetchBranchCommitsCount } from '../actions/commitsActions';
-import { fetchIssuesCount, fetchLabels, fetchAssigneesIssues, getTwoWeekIssues } from '../actions/issuesActions';
+import { fetchIssuesCount, fetchLabels, getTwoWeekIssues } from '../actions/issuesActions';
 import { fetchMilestonesCount, fetchMilestones } from '../actions/milestonesActions';
-import { getTwoWeekPRs } from '../actions/pullsActions';
+import { getTwoWeekPRs, fetchPullsCount } from '../actions/pullsActions';
 import { getCommitActivity, sortByDay } from '../actions/statsActions';
 
 import * as d3 from 'd3';
@@ -21,6 +21,9 @@ class Stats extends Component{
 			fetched: false,
 			count: {
 				commits: 0,
+				branches: 0,
+				tags: 0,
+				pulls: 0,
 				issues_open: 0,
 				issues_closed: 0,
 				issues: 0,
@@ -28,51 +31,27 @@ class Stats extends Component{
 				milestones_closed: 0,
 				milestones: 0
 			},
+			commit_activity: [],
 			labels: [],
-			assignees: [
-				{
-					login: "githubvision",
-					avatar_url: 'https://avatars3.githubusercontent.com/u/46488526?v=4',
-					issues: 3
-				},
-				{
-					login: "yssel",
-					avatar_url: 'https://avatars1.githubusercontent.com/u/15140339?v=4',
-					issues: 5
-				},
-				{
-					login: "aya-seco",
-					avatar_url: 'https://avatars0.githubusercontent.com/u/22739392?v=4',
-					issues: 2
-				},
-				{
-					login: "budjako",
-					avatar_url: "https://avatars3.githubusercontent.com/u/6458667?v=4",
-					issues: 4	
-				},
-				{
-					login: "raintomista",
-					avatar_url: "https://avatars2.githubusercontent.com/u/11486217?v=4",
-					issues: 10	
-				}
-				,
-				{
-					login: "hnygry",
-					avatar_url: "https://avatars2.githubusercontent.com/u/25195811?v=4",
-					issues: 2	
-				}
-			],
 			milestones: []
 		}
 	}
 
 	componentDidMount(){
+		this.setState({ 
+			count: { 
+				...this.state.count, 
+				branches: Object.entries(this.props.branches).length,
+				tags: Object.entries(this.props.tags).length
+			}
+		})
 		this.getData(this.props)
 	}
 
 	drawGraphs = () => {
 		const { 
 			count, 
+			labels,
 			milestones, 
 			open_issues, 
 			closed_issues,
@@ -84,7 +63,9 @@ class Stats extends Component{
     	this.generateGroupedBar(d3.select('#commits-bar .graph'))
     	// Issues line
     	this.generateLine(d3.select('#issues-line .graph'),open_issues, closed_issues)
-    	this.generateLine(d3.select('#prs-line .graph'),proposed_prs, merged_prs)
+    	this.generateLine(d3.select('#prs-line .graph'), proposed_prs, merged_prs)
+
+    	this.generateDonut(d3.select('#issues-donut .graph'),labels)
 
     	milestones.map((m) => {
     		this.generateProgressDonut(
@@ -146,6 +127,8 @@ class Stats extends Component{
 		switch(mode){
 			case 'bars':
 				return `${date.getMonth() < 9 ? '0'+(date.getMonth()+1) : date.getMonth()+1}/${date.getDate()}/${date.getFullYear()}`
+			case 'bars-half':
+				return `${date.getMonth() < 9 ? '0'+(date.getMonth()+1) : date.getMonth()+1}/${date.getDate()}`
 			case 'half':
 				return `${month} ${date.getDate()}`
 			case 'full':
@@ -155,12 +138,27 @@ class Stats extends Component{
 		}
 	}
 
+	getTextColor = (hex, convert) =>{
+        // Code snippet from https://stackoverflow.com/a/12043228
+        if(convert) hex = this.RGBToHex(hex);
+
+        let rgb = parseInt(hex, 16);   // convert rrggbb to decimal
+        let r = (rgb >> 16) & 0xff;  // extract red
+        let g = (rgb >>  8) & 0xff;  // extract green
+        let b = (rgb >>  0) & 0xff;  // extract blue
+
+        let luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        if (luma < 128) return 'white'
+        else return 'black'
+    }
+
 	getData = async (props) =>{
 		this.setState({ fetching: true })
 		// COUNT
     	let commit_count = await fetchBranchCommitsCount(props.username, props.reponame, props.master_sha)
     	let issues_count = await fetchIssuesCount(props.username, props.reponame)
     	let milestones_count = await fetchMilestonesCount(props.username, props.reponame)
+    	let pulls_count = await fetchPullsCount(props.username, props.reponame)
 
     	let commit_activity = await getCommitActivity(props.username, props.reponame)
     	let milestones = await fetchMilestones(props.username, props.reponame)
@@ -169,7 +167,6 @@ class Stats extends Component{
     	let closed_issues = await getTwoWeekIssues(props.username, props.reponame, 'closed')
     	let proposed_prs = await getTwoWeekPRs(props.username, props.reponame)
     	let merged_prs = await getTwoWeekPRs(props.username, props.reponame, true)
-    	// let assignees = await fetchAssigneesIssues(props.username, props.reponame)
 
     	// Computations
     	open_issues = sortByDay(open_issues, 'issue')
@@ -186,6 +183,7 @@ class Stats extends Component{
     		count: { 
     			...this.state.count, 
     			commits: commit_count,
+    			pulls: pulls_count,
     			issues_open: issues_count.open,
     			issues_closed: issues_count.closed,
     			issues: issues_count.open + issues_count.closed,
@@ -214,16 +212,14 @@ class Stats extends Component{
     	let radius = Math.min(width, height) / 2
     	if(data[0].n === 0) data[1].n = 1
 
-    	container.select('.percent')
-    		.style('width', width)
-
     	let arc = d3.arc()
-    		.outerRadius(radius - 9.5)
-    		.innerRadius(radius - 20.5)
+    		.outerRadius(radius - 10)
+    		.innerRadius(radius - 15)
+    		.cornerRadius(5)
 
-    	let inner_arc = d3.arc()
-    		.outerRadius(radius - 12)
-    		.innerRadius(radius - 18)
+    	let outer_arc = d3.arc()
+    		.outerRadius(radius - 10)
+    		.innerRadius(radius - 15)
 
     	let pie = d3.pie()
     		.value((d) => d.n )
@@ -240,7 +236,7 @@ class Stats extends Component{
     			.append('g')
 
     	g.append('path')
-    		.attr('d', inner_arc)
+    		.attr('d', outer_arc)
     		.style('fill', '#dfe2e2')
     	g.append('path')
     		.attr('d', arc)
@@ -248,26 +244,20 @@ class Stats extends Component{
     }
 
     generateDonut = (container, data) => {
-    	let width = container.node().getBoundingClientRect().width;
-    	let height = container.node().getBoundingClientRect().height;
-    	let radius = Math.min(width, height) / 2
-    	if(data[0].n === 0) data[1].n = 1
+    	let margin = {top: 10, bottom: 10, left: 10, right: 10}
 
-    	container.select('.percent')
-    		.style('width', width)
+    	let width = container.node().getBoundingClientRect().width - margin.left - margin.right;
+    	let height = container.node().getBoundingClientRect().height - margin.top - margin.bottom;
+    	let radius = Math.min(width, height) / 2
 
     	let arc = d3.arc()
-    		.outerRadius(radius - 9.5)
-    		.innerRadius(radius - 20.5)
-
-    	let inner_arc = d3.arc()
-    		.outerRadius(radius - 12)
-    		.innerRadius(radius - 18)
+    		.outerRadius(radius - 20)
+    		.innerRadius(radius - 60)
 
     	let pie = d3.pie()
-    		.value((d) => d.n )
+    		.value((d) => d.issues.totalCount )
 
-    	let svg = container.append('svg')
+    	let svg = container.select('svg')
     		.attr('width', width)
     		.attr('height', height)
     		.append('g')
@@ -277,50 +267,87 @@ class Stats extends Component{
     		.data(pie(data))
     		.enter()
     			.append('g')
-
+    	let statsPage = this;
     	g.append('path')
     		.attr('d', arc)
-    		.style('fill', '#dfe2e2')
-    	g.append('path')
-    		.attr('d', arc)
-    		.style('fill', (d, i) => d.data.color)
+    		.attr('transform', `translate(${margin.left}, ${margin.top})`)
+    		.style('fill', (d, i) => `#${d.data.color}`)
+    		.style('fill-opacity', '0.75')
+    		.on('mouseover', (d, i, j) => {
+    			d3.select(j[i]).attr("stroke","#fff").attr("stroke-width","3px")
+    			d3.select('#label-donut-text .name').text(d.data.name)
+    			d3.select('#label-donut-text .number').text(d.data.issues.totalCount)
+    		})
+    		.on('mouseout', (d, i, j) => {
+    			d3.select(j[i]).attr("stroke-width","0")
+    			d3.select('#label-donut-text .name').text('Total Labels')
+    			d3.select('#label-donut-text .number').text(statsPage.state.labels.length)	
+    		})
     }
 
-    generateGroupedBar = (container) => {
+    // modes: 0 = 2weeks  1 = 1 month   2 = year
+    generateGroupedBar = (container, mode=1) => {
     	let width = container.node().getBoundingClientRect().width;
     	let height = container.node().getBoundingClientRect().height;
 
     	let margin = ({top: 70, right: 20, bottom: 55, left: 50})
     	
     	const {commit_activity} = this.state;
-    	let keys = [ 'SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
-    	let data = [ 
-    		{ 
-    			week: 'Last week (' + this.getWordDate(commit_activity[commit_activity.length-2].week, 'bars') + ')',
-    			days: commit_activity[commit_activity.length-2].days 
-    		}, 
-    		{ 
-    			week: 'Current week (' + this.getWordDate(commit_activity[commit_activity.length-1].week, 'bars') + ')',
-    			days: commit_activity[commit_activity.length-1].days 
-    		}
-    	]
 
-    	keys.map((k, i) => {
-    		data[0][k] = data[0].days[i]
-    		data[1][k] = data[1].days[i]
-    	})
+    	let keys = []
+    	let data = []
+    	let padding = 0.8
+    	switch(mode){
+    		case 0: // 2 weeks view
+    			keys = [ 'SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+		    	data = [2, 1].map((n) => {
+		    		return(
+		    			{ 
+			    			week: this.getWordDate(commit_activity[commit_activity.length-n].week, 'bars'),
+			    			days: commit_activity[commit_activity.length-n].days 
+			    		}	
+		    		)
+		    	})
+    			keys.map((k, i) => {
+    				[0, 1].map((n) =>{
+    					data[n][k] = data[n].days[i]
+    				})
+    			})
+		    	break;
+		    case 1: 
+		    	console.log(commit_activity)
+		    	padding = 0.6
+		    	keys = [ 'SU', 'M', 'T', 'W', 'TH', 'F', 'S']
+		    	data = [4, 3, 2, 1].map((n) => {
+		    		console.log(commit_activity[commit_activity.length-n])
+		    		return(
+		    			{ 
+			    			week: this.getWordDate(commit_activity[commit_activity.length-n].week, 'bars'),
+			    			days: commit_activity[commit_activity.length-n].days 
+			    		}	
+		    		)
+		    	})
+		    	console.log(data)
+		    	keys.map((k, i) => {
+    				[0, 1, 2, 3].map((n) =>{
+    					data[n][k] = data[n].days[i]
+    				})
+    			})
+    			console.log(data)
+		    	break;
+    	}
 
     	let groupKey = 'week'
     	let x0 = d3.scaleBand()
 		    .domain(data.map(d => d[groupKey]))
 		    .rangeRound([margin.left, width - margin.right])
-		    .paddingInner(0.01)
+		    .paddingInner(0)
 
 		let x1 = d3.scaleBand()
 		    .domain(keys)
 		    .rangeRound([0, x0.bandwidth()])
-		    .padding(0.7)
+		    .padding(padding)
 
 		let y = d3.scaleLinear()
 		    .domain([0, d3.max(data, d => d3.max(keys, key => d[key]))]).nice()
@@ -391,50 +418,13 @@ class Stats extends Component{
     	let width = container.node().getBoundingClientRect().width;
     	let height = container.node().getBoundingClientRect().height;
 
-    	let margin = ({top: Math.max(40, height/5*2), right: 0, bottom: 0, left: 0})
-
-    	if(!data && !data2){
-	    	data = {
-	    		0: [{n: 1}, {n: 1}, {n: 1}],
-	    		1: [ {n: 1}],
-	    		2: [{n: 1}, {n: 1}, {n: 1}],
-	    		3: [ {n: 1}, {n: 1}],
-	    		4: [ {n: 1}, {n: 1}, {n: 1},{n: 1}],
-	    		5: [ {n: 1}],
-	    		6: [{n: 1}, {n: 1}, {n: 1}],
-	    		7: [{n: 1}, {n: 1}, {n: 1}],
-	    		8: [ {n: 1}, {n: 1}],
-	    		9: [ {n: 1}, {n: 2}, {n: 1}],
-	    		10: [{n: 1}, {n: 1}, {n: 1}],
-	    		11: [ {n: 1}, {n: 2}, {n: 1}],
-	    		12: [ {n: 1}, {n: 1}, {n: 1},{n: 1}],
-	    		13: [{n: 1}, {n: 1}]
-	    	}
-
-	    	data2 = {
-	    		1: [ {n: 1}, {n: 1}, {n: 1},{n: 1}],
-	    		9: [ {n: 1}, {n: 1}, {n: 1},{n: 1}],
-	    		13: [],
-	    		12: [ {n: 1}],
-	    		11: [{n: 1}, {n: 1}, {n: 1}],
-	    		10: [ {n: 1}, {n: 1}],
-	    		8: [ {n: 1}],
-	    		7: [],
-	    		6: [],
-	    		5: [ {n: 1}, {n: 1}],
-	    		4: [ {n: 1}, {n: 2}, {n: 1}],
-	    		3: [{n: 1}, {n: 1}, {n: 1}],
-	    		2: [ {n: 1}, {n: 2}, {n: 1}],
-	    		0: []
-	    	}
-	    }
-
+    	let margin = ({top: Math.max(40, height/5*1), right: 0, bottom: 0, left: 0})
     	let x = d3.scaleLinear()
     		.domain([0, 13])
     		.rangeRound([margin.left, width - margin.right])
 
     	let y = d3.scaleLinear()
-    		.domain([0, d3.max(Object.values(data), (d) => d.length)])
+    		.domain([0, d3.max(Object.values(data).concat(Object.values(data2)), (d) => d.length)])
     		.rangeRound([height - margin.bottom, margin.top])
 
     	let svg = container.select('svg')
@@ -462,7 +452,7 @@ class Stats extends Component{
     }
 
 	render(){
-		const { master_name } = this.props;
+		const { master_name, branches, tags } = this.props;
 		const { count, labels, assignees, milestones } = this.state;
 
 		return(
@@ -472,13 +462,13 @@ class Stats extends Component{
 					<div id='repo-stats'>
 						<div>
 							<div className='heading'>{ count.commits }</div>
-							<div className='sub'><b>COMMIT{count.commits > 1 ? 'S' : '' }</b></div>
+							<div className='sub'><b>COMMIT{count.commits !== 1 ? 'S' : '' }</b></div>
 							<div className='detail'>IN <b>{ master_name }</b></div>
 						</div>
 						<div id='issue-stats' className='mu-15'>
 							<div>
 								<span className='mr-10'><b style={{color: '#ffcd3c'}}>{count.issues_open}</b> / {count.issues}</span>
-								<span>open <b>issues</b></span>
+								<span>open <b>issue{count.issues_open !== 1 ? 's' : ''}</b></span>
 							</div>
 							<div className='progress'>
 								<div className='portion'
@@ -491,7 +481,7 @@ class Stats extends Component{
 						<div id='milestone-stats' className='pd-ud-5'>
 							<div>
 								<span className='mr-10'><b style={{color: '#35d0ba'}}>{count.milestones_open}</b> / {count.milestones}</span>
-								<span>open <b>milestones</b></span>
+								<span>open <b>milestone{count.milestones_open !== 1 ? 's' : ''}</b></span>
 							</div>
 							<div className='progress'>
 								<div className='portion'
@@ -503,8 +493,12 @@ class Stats extends Component{
 						</div>
 					</div>
 					<div id='commits-bar'>
-						<div className='graph-title'>Repository Commits</div>
-						<div className='graph-subtitle'>Commits pushed in all branches</div>
+						<div className='graph-title'>Commits in <span className='code ml-5'>{ master_name}</span></div>
+						<div className='graph-subtitle'>Activities of default branch</div>
+						<div className='graph-modes'>
+							<div>2 weeks</div>
+							<div className='active'>1 month</div>
+						</div>
 						<div className='graph'>
 							<svg></svg>
 						</div>
@@ -554,32 +548,49 @@ class Stats extends Component{
 				</div>
 
 				<div id='row-2'>
-					<div id='issues-bar'>
-						<div className='header'>ISSUES COUNT <span className='subheader'>by labels</span></div>
+					<div id='repo-info'>
+						<div>
+						<div className='info'>
+							<div className='sub'><b>Pull Request{count.pulls !== 1 ? 's' : '' }</b></div>
+							<div className='heading'>{ count.pulls }</div>
+						</div>
+						<div className='info'>
+							<div className='sub'><b>Branch{count.branches !== 1 ? 'es' : '' }</b></div>
+							<div className='heading'>{ count.branches }</div>
+						</div>
+						<div className='info'>
+							<div className='sub'><b>Tag{count.tags !== 1 ? 's' : '' }</b></div>
+							<div className='heading'>{ count.tags }</div>
+						</div>
+						</div>
+					</div>
+					<div id='issues-donut'>
+						<div id='labels-list-container'>
+							<div className='graph-title'>Issue Labels</div>
+							<div id='labels-list'>
+								<div className='block'>
+								{ labels.map((l, i) => {
+									return(
+										<div className='stats-label' key={i}>
+											<div className='color-container'><div className='color' style={{background: `#${l.color}`, boxShadow: l.color==='ffffff' ? '0px 0px 3px gray' : '' }}></div></div>
+											<div>{l.name}</div>
+											<div className='label-count'>{l.issues.totalCount}</div>
+										</div>
+									)
+								})}
+								</div>
+							</div>
+						</div>
 						<div className='graph'>
-							<div className='block'>
-							{ labels.sort((a,b) => b.issues.totalCount-a.issues.totalCount).map((label, i) => {
-								return (
-									<div key={i} className='label-stat'>
-										<div className='label-card'>
-											<div className='label-title'>
-												{label.name}
-											</div>
-											<div className='label-issues'>{label.issues.totalCount}</div>
-										</div>
-										<div className='label-color'
-											style={{ 
-												background: `#${label.color}`
-										}}>
-										</div>
-									</div>
-								)
-							})}
+							<svg></svg>
+							<div id='label-donut-text'>
+								<div className='name'>Total Labels</div>
+								<div className='number'>{ labels.length }</div>
 							</div>
 						</div>
 					</div>
 					<div id='milestones'>
-						<div className='header'>MILESTONES</div>
+						<div className='graph-title'>Milestones</div>
 						<div className='graph' id='milestones-list'>
 							<div className='block'>
 							{ milestones.map((m,i) => {
@@ -611,7 +622,9 @@ function mapStateToProps(state){
         username: state.repo.data.owner,
         reponame: state.repo.data.name,
         master_name: state.repo.data.master_name,
-        master_sha: state.repo.data.master_sha
+        master_sha: state.repo.data.master_sha,
+        branches: state.branches.data.branches,
+        tags: state.tags.data.tags,
     }
 }
 

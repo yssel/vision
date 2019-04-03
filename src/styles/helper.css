@@ -11,6 +11,7 @@
 .mr-15{ margin-right: 15px }
 .mr-10{ margin-right: 10px }
 .mr-5{ margin-right: 5px }
+.ml-5{ margin-left: 5px }
 .pd-lr-15{ 
 	padding-left: 15px; 
 	padding-right: 15px; 
@@ -93,4 +94,8 @@
     -webkit-transform: rotate(359deg);
     transform: rotate(359deg);
   }
+}
+
+.code{
+	font-family: 'Source Code Pro';
 }

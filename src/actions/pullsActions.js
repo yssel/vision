@@ -6,6 +6,20 @@ async function fetchPullsReq(user, repo){
 	return response;
 }
 
+export async function fetchPullsCount(username, reponame, state='OPEN'){
+	const pullsFetch = authenticate().next().value
+	let query = `
+	query {
+		repository(owner: "${username}", name: "${reponame}"){
+			pullRequests(states: ${state}){
+				totalCount
+			}
+		}
+	}`
+
+	let response = await pullsFetch({ query })
+	return response.data.repository.pullRequests.totalCount
+}
 
 export function fetchPulls(username, reponame){
 	return async function (dispatch) {

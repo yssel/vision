@@ -1,174 +1,189 @@
-#issues-bar .graph{
-	/*background: white;*/
-	border-radius: 5px;
-	height: 100%;
-	overflow-x: hidden;
-	overflow-y: auto;
-	/*box-shadow: var(--box-shadow-light);*/
-	/*padding: 5px;*/
-	margin-left: -40px;
-	padding-left: 40px;
-	position: relative;
-}
-
-#issues-bar .graph::-webkit-scrollbar-track{
-	margin-left: 10px;
-	border-radius: 10px;
-	background-color: var(--color-3);
-}
-
-#issues-bar .graph::-webkit-scrollbar{
-	width: 7px;
-	background-color: var(--color-lb);
-}
-
-#issues-bar .graph::-webkit-scrollbar-thumb{
-	border-radius: 10px;
-	background: var(--color-2);
-}
-
-#issues-bar .graph>div{
-	/*margin-left: 10px;*/
-	margin-right: 20px;
-}
-
-
-.label-stat{
-	overflow-x: hidden;
-	margin-bottom: 10px;
-	font-family: 'Source Sans Pro';
-	position: relative;
-}
-
-.label-card{
+#row-2{
+	padding-top: 10px; 
 	display: grid;
-	grid-template-columns: auto 40px;
-	position: relative;
-	border-radius: 5px;
-	padding: 10px;
-	padding-left: 15px;
-	margin-right: 10px;
-	background: white;
-}
-
-.label-title{ 
-	/*padding-bottom: 15px;*/
-	font-weight: 600; 
-	font-size: 12px;
-	line-height: 25px;
-}
-
-.label-color{
-	bottom: 10px;
-	left: 15px;
-	width: 20%;
-	height: 4px;
-	border-radius: 5px;
-	position: absolute;
-}
-
-.label-issues{ 
-	font-family: 'Raleway';
-	font-weight: 700;
-	font-size: 10px;
-	line-height: 25px;
-	margin-left: 10px;
-	/*text-align: right;*/
-	color: var(--color-1);
-}
-
-
-#issue-assignees .graph{
-	/*display: inline-block;*/
-	display: grid;
-	grid-template-columns: auto auto;
-	grid-auto-rows: auto auto auto;
+	grid-template-columns: 200px auto 35%;
+	grid-template-rows: calc(60vh - var(--bar-height) - 60px);
 	grid-gap: 10px;
 }
 
-.stats-assignee{
-	/*width: 30%;*/
-	height: 100%;
-	text-align: center;
-	position: relative;
-	background: white;
-	border-radius: 5px;
-	box-shadow: var(--box-shadow-light);
+.info{
+	padding: 5px;
+	border-radius: 4px;
+	background: rgba(255,255,255,0.5);
+	display: grid;
+	grid-template-columns: auto 30px;
+	margin-bottom: 5px;
+}
+#repo-info>div>div>div{
+	display: inline-block;
 }
 
-.stats-assignee>div{
-	float: left;
-	/*padding-left: 25%;*/
-}
-
-.stats-assignee .avatar{
-	/*width: 25%;*/
-	height: 100%;
-	padding-left: 15px;
-	padding-right: 20px;
-	position: relative;
-}
-
-.stats-assignee .avatar>div{
-	/*position: absolute;*/
-	overflow: hidden;
-	margin-top: 15px;
+#repo-info .heading{
+	box-shadow: 0 2px 2px rgba(40, 49, 73, 0.2);
+	color: white;
+	font-weight: 600;
+	font-family: 'Quicksand';
+	font-size: 10px;
+	letter-spacing: 0.5px;
+	background: var(--color-2);
+	width: 30px;
+	height: 30px;
+	display: grid;
+	justify-content: center;
+	align-items: center;
 	border-radius: 50%;
-	width: 60px;
-	height: 60px;
-	background: blue;
 }
 
-.stats-assignee .avatar>div img{
-	object-fit: cover;
-	width: 100%;
-	height: 100%;
+#repo-info .sub{
+	display: grid;
+	align-items: center;
+	margin-left: 5px;
+	color: white;
+	color: var(--color-dg);
+	font-family: 'Source Sans Pro';
+	font-size: 13px;
 }
 
+#issues-donut{
+	display: grid;
+	grid-template-columns: 35% 65%;
+	grid-template-rows: 100%;
+	box-shadow: var(--box-shadow-light);
+	border-radius: 4px;
+	overflow: hidden;
+}
 
-/*MILESTONES*/
-#milestones-list{
-	height: 100%;
-	overflow-x: hidden;
+#issues-donut .graph{
+	background: white;
+	display: flex;
+  	justify-content: center;
+  	align-items: center;	
+}
+
+#labels-list-container{
+	background: var(--color-lg);
+	display: flex;
+	flex-direction: column;
+}
+
+#issues-donut .graph-title, #milestones .graph-title{
+	padding: 10px;
+	padding-bottom: 8px;
+	font-family: 'Source Sans Pro';
+	font-size: 14px;
+	font-weight: 700;
+}
+
+#labels-list, #milestones-list{
+	flex-grow: 1;
 	overflow-y: auto;
-	margin-left: -40px;
-	padding-left: 40px;
-	position: relative;
+	padding: 10px;
+	padding-top: 0;
 }
 
-#milestones-list::-webkit-scrollbar-track{
-	margin-left: 10px;
+#labels-list::-webkit-scrollbar-track, #milestones-list::-webkit-scrollbar-track{
 	border-radius: 10px;
 	background-color: var(--color-3);
 }
 
-#milestones-list::-webkit-scrollbar{
+#labels-list::-webkit-scrollbar, #milestones-list::-webkit-scrollbar{
 	width: 7px;
 	background-color: var(--color-lb);
 }
 
-#milestones-list::-webkit-scrollbar-thumb{
+#labels-list::-webkit-scrollbar-thumb, #milestones-list::-webkit-scrollbar-thumb{
 	border-radius: 10px;
 	background: var(--color-2);
 }
 
-#milestones-list>div{
-	margin-right: 20px;
+.stats-label{
+	border-radius: 4px;
+	border: 0.5px solid rgba(202,202,202,0.5);
+	padding: 6px;
+	padding-left: 10px;
+	padding-right: 10px;
+	margin-bottom: 5px;
+	font-family: 'Source Sans Pro';
+	font-size: 11px;
+	line-height: 11px;
+	font-weight: 600;
+	background: white;
+	display: grid;
+	grid-template-columns: 8px auto 30px;
+	grid-gap: 10px;
+}
+
+.stats-label .color-container, .label-count{
+	display: flex;
+  	justify-content: center;
+  	align-items: center;
+}
+
+.stats-label .color{
+	width: 8px;
+	height: 8px;
+	border-radius: 20px;
+}
+
+.label-count{
+	color: var(--color-1);
+	font-family: 'Poppins';
+	font-size: 9px;
+}
+
+#issus-donut svg{
+	z-index: 2;
+}
+
+#label-donut-text{
+	width: calc(100% - 240px);
+	text-align: center;
+	position: absolute;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+#label-donut-text .name{
+	font-family: 'Quicksand';
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+	hyphens: auto;
+	color: var(--color-1);
+}
+
+#label-donut-text .number{
+	font-family: 'Josefin Sans';
+	font-size: 2em;
+	margin-top: 5px;
+	color: var(--color-2);
+}
+
+/*MILESTONES*/
+#milestones{
+	display: flex;
+	flex-direction: column;
+	background: var(--color-lg);
+	box-shadow: var(--box-shadow-light);
+	border-radius: 4px;
 }
 
 .milestone{
 	display: grid;
 	grid-template-columns: auto 25%;
-	box-shadow: var(--box-shadow-light);
 	border-radius: 4px;
-	margin-top: 8px;
-	margin-bottom: 8px;
+	border: 0.5px solid rgba(202,202,202,0.5);
+	margin-bottom: 5px;
 	background: white;
-	font-family: 'Poppins';
+	font-family: 'Quicksand';
+	font-size: 15px;
+}
+
+.milestone .donut{
+	height: 100%;
 }
 
 .milestone .details{
-	padding: 15px;
+	padding: 10px;
 }
 
 .milestone-title{
@@ -176,7 +191,7 @@
 }
 
 .milestone .date{
-	margin-top: 3px;
-	font-family: 'Quicksand';
-	font-size: 0.7em;
+	font-family: 'Source Sans Pro';
+	font-size: 10px;
+	font-weight: 500;
 }
