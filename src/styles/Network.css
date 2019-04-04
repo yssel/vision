@@ -388,3 +388,13 @@
 	margin-right: 5px;
 	border-radius: 15px;
 }
+
+/*Canvas*/
+#timeline line{
+	stroke: lightgray;
+	stroke-width: 1px;
+}
+
+#timeline text{
+	fill: var(--color-2);
+}

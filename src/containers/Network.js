@@ -13,7 +13,7 @@ import '../styles/Network.css';
 class Network extends Component{
     constructor(props){
         super(props);
-
+        let timeline_font = '700 9px Raleway'
         let font_family = 'Assistant'
         let font_size = 10
         let font = `600 ${font_size}px ${font_family}`
@@ -33,6 +33,7 @@ class Network extends Component{
             INTERVAL_Y: 30,
             MASTER_Y: 20,
             panning: false,
+            timeline_font,
             branch_font: font,
             branch_font_size: font_size,
             paths: null,
@@ -67,7 +68,49 @@ class Network extends Component{
             //         .attr('height', 4*this.state.NODE_RADIUS)
     }
 
-    
+    getWordMonth = (month) => {
+        switch (month) {
+            case 0:
+                return 'January'
+                break;
+            case 1:
+                return 'February'
+                break;
+            case 2:
+                return 'March'
+                break;
+            case 3:
+                return 'April'
+                break;
+            case 4:
+                return 'May'
+                break;
+            case 5:
+                return 'June'
+                break;
+            case 6:
+                return 'July'
+                break;
+            case 7:
+                return 'August'
+                break;
+            case 8:
+                return 'September'
+                break;
+            case 9:
+                return 'October'
+                break;
+            case 10:
+                return 'November'
+                break;
+            case 11:
+                return 'December'
+                break;
+            default:
+                break;
+        }
+    }
+
     getData = async (props) =>{
         await props.fetchCommits(props.username, props.reponame, props.checkout, props.checkout_from)
         await props.fetchPulls(props.username, props.reponame)
@@ -328,6 +371,9 @@ class Network extends Component{
     }
 
     getXCoords = (commits, fetchedBranches, fetchedTags, width) => {
+        let dates = []
+        let months = []
+
         let branches = fetchedBranches.slice()
         let branchesWithX = []
         let tags = fetchedTags.slice()
@@ -353,7 +399,50 @@ class Network extends Component{
         // let offset = this.props.canvas_nameCount - (this.props.canvas_branches.length + this.props.canvas_tags.length - this.props.canvas_nameCount)
         let removedStr = ''
         let bboxStrwidth = 0
+
+        let firstDate = true
+        let currDate = null
+        let currMonth = null
+
         let commitsWithX = commits.map((commit, i) => {
+            // Initialize date
+            if(firstDate){
+                let date = new Date(commit.commit.committer.date)
+                currDate = { x, date: date.getDate() }
+                currMonth = { start: x, end: x, month: date.getMonth(), year: date.getFullYear()}
+                firstDate = false
+            }
+            // Record dates
+            else{
+                let date = new Date(commit.commit.committer.date)
+                // New date is found
+                if(currDate.date !== date.getDate() 
+                    || currMonth.month !== date.getMonth() 
+                    || currMonth.year !== date.getFullYear()
+                ){
+                    // push date
+                    dates.push(currDate)
+                    // Initialize new date
+                    currDate = { x, date: date.getDate()}
+                }else{
+                    // update curr x
+                    currDate.x = x
+                }
+
+                // New month
+                if(currMonth.month !== date.getMonth()
+                    || currMonth.year !== date.getFullYear()
+                ){
+                    // push month
+                    months.push(currMonth)
+                    // Initialize new date
+                    currMonth = { start: x, end: x, month: date.getMonth(), year: date.getFullYear()}
+                }else{
+                    currMonth.end = x
+                }
+
+            }
+
             let c = {
                 x,
                 ...commit,
@@ -469,6 +558,11 @@ class Network extends Component{
 
             return c
         })
+
+        if(currDate) dates.push(currDate)
+        if(currMonth) months.push(currMonth)
+        this.props.setCanvasDisplay("dates", dates)
+        this.props.setCanvasDisplay("months", months)
 
         branchGroup.remove()
         tagGroup.remove()
@@ -1581,6 +1675,74 @@ class Network extends Component{
         zoom.translateBy(zoomContainer, screenWidth, 0)
         zoomContainer.call(zoom)
         let initPan = d3.zoomTransform(d3.select('#zoom-handler').node())
+        let networkClass = this
+
+        let timeline = canvas.append('g')
+            .attr('id', 'timeline')
+            .attr('transform', 'translate('+initPan.x+',20)')
+        let datesLayer = timeline.append('g')
+        let dates = this.props.canvas_dates
+        datesLayer.selectAll('text')
+            .data(dates)
+            .enter()
+                .append('text')
+                .style('font', networkClass.state.timeline_font)
+                .attr('fill', 'black')
+                .attr('text-anchor', 'middle')
+                .attr('x', (d) => d.x)
+                .attr('y', 7)
+                .text((d) => d.date)
+
+        datesLayer.selectAll('text')
+            .each((d) =>{
+                timeline.append('line')
+                    .attr('x1', d.x)
+                    .attr('x2', d.x)
+                    .attr('y1', '-7')
+                    .attr('y2', '-5')
+            })
+
+        let monthsLayer = timeline.append('g')
+        let months = this.props.canvas_months
+        monthsLayer.selectAll('text')
+            .data(months)
+            .enter()
+                .append('text')
+                .style('font', networkClass.state.timeline_font)
+                .attr('fill', 'black')
+                .attr('text-anchor', 'middle')
+                .attr('x', (d) => ((d.start-d.end)/2) + d.end)
+                .attr('y', -5)
+                .text((d) => networkClass.getWordMonth(d.month))
+
+        let lineGuides = timeline.append('g')
+        monthsLayer.selectAll('text')
+            .each((d,i,j) => {
+                let bbox = j[i].getBBox()
+                let midpoint = d.end+(d.start-d.end)/2
+                if(d.start !== d.end){
+                    timeline.append('line')
+                        .attr('x1', d.start)
+                        .attr('x2', midpoint+(bbox.width/2)+5)
+                        .attr('y1', '-7')
+                        .attr('y2', '-7')
+                    timeline.append('line')
+                        .attr('y1', '-7')
+                        .attr('y2', '-3')
+                        .attr('x1', d.start)
+                        .attr('x2', d.start)
+                    timeline.append('line')
+                        .attr('x1', d.end)
+                        .attr('x2', midpoint-(bbox.width/2)-5)
+                        .attr('y1', '-7')
+                        .attr('y2', '-7')
+                    timeline.append('line')
+                        .attr('y1', '-7')
+                        .attr('y2', '-3')
+                        .attr('x1', d.end)
+                        .attr('x2', d.end)
+                }
+            })
         
         let networkGraph = canvas.append('g')
             .attr('id', 'network-graph-group')
@@ -1645,9 +1807,8 @@ class Network extends Component{
                         return 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy
                     })
         
-        // Draw commit nodes
-        let networkClass = this
         
+        // Draw commit nodes
         let commitNodes = networkGraph.selectAll('circle')
             .data(commits)
             .enter()
@@ -1735,10 +1896,7 @@ class Network extends Component{
             .data(canvas_tags)
             .enter()
                 .append('text')
-                .attr('fill', (d) => {
-                    // return colorScale(d.y)
-                    return networkClass.getTextColor(colorScale(d.y), true)
-                })
+                .attr('fill', (d) => networkClass.getTextColor(colorScale(d.y), true))
                 .attr('text-anchor', 'end')
                 .style('font', networkClass.state.branch_font)
                 .attr('x', (d) => d.x-15-offset)
@@ -1768,7 +1926,6 @@ class Network extends Component{
                     .style('fill', (d) => colorScale(d.y))
                     .attr('d', (d) => `M${d.x-networkClass.state.NODE_RADIUS-offset} ${d.y} L${d.x - 11- offset} ${d.y - (d.height * 0.25)} L${d.x - 11- offset} ${d.y + (d.height * 0.25)} Z`)
 
-        
 
         canvas.on('mouseenter', function(){
             this.focus()
@@ -1780,6 +1937,7 @@ class Network extends Component{
                     networkClass.setState({ panning: true })
                     // compute transform
                     let network = d3.select('#network-graph-group')
+                    let timeline = d3.select('#timeline')
                     let transform = network.attr('transform').match(/.*translate\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\).*/)
                     let x = Number(transform ? transform[1] : 0)
                     let y = Number(transform ? transform[2] : 0)
@@ -1804,13 +1962,15 @@ class Network extends Component{
 
                     if(MAX_WIDTH < width-offset) x = x <= 0 ? x : 0
                     if(MAX_HEIGHT < height) {
-                        console.log('this')
                         y = y <= 0 ? y : 0
                     }
                     // Transform graph
                     network.transition()
                         .duration(350)
                         .attr('transform', 'translate('+x+','+y+')')
+                    timeline.transition()
+                        .duration(350)
+                        .attr('transform', 'translate('+x+',20)')
                     networkClass.setState({ TRANS_X: x, TRANS_Y: y })
                 }
             }
@@ -2025,6 +2185,8 @@ function mapStateToProps(state){
         canvas_nameStringWidth: state.ui.canvas.nameStringWidth,
         canvas_nameCount: state.ui.canvas.nameCount,
         canvas_offset: state.ui.canvas.offset,
+        canvas_months: state.ui.canvas.months,
+        canvas_dates: state.ui.canvas.dates,
     }
 }
 
