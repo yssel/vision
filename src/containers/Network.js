@@ -9,6 +9,7 @@ import { setCanvasDisplay } from '../actions/uiActions'
 
 import * as d3 from 'd3';
 import '../styles/Network.css';
+import '../styles/commitBox.css';
 
 class Network extends Component{
     constructor(props){
@@ -71,16 +72,16 @@ class Network extends Component{
     getWordMonth = (month) => {
         switch (month) {
             case 0:
-                return 'January'
+                return 'Jan'
                 break;
             case 1:
-                return 'February'
+                return 'Feb'
                 break;
             case 2:
-                return 'March'
+                return 'Mar'
                 break;
             case 3:
-                return 'April'
+                return 'Apr'
                 break;
             case 4:
                 return 'May'
@@ -92,19 +93,19 @@ class Network extends Component{
                 return 'July'
                 break;
             case 7:
-                return 'August'
+                return 'Aug'
                 break;
             case 8:
-                return 'September'
+                return 'Sep'
                 break;
             case 9:
-                return 'October'
+                return 'Oct'
                 break;
             case 10:
-                return 'November'
+                return 'Nov'
                 break;
             case 11:
-                return 'December'
+                return 'Dec'
                 break;
             default:
                 break;
@@ -118,6 +119,7 @@ class Network extends Component{
         await this.drawNetwork();
         await this.setState({ commit_viewed: this.props.commits[0] })
         await this.extractIssues(this.props.commits[0].commit.message);
+        await this.getFiles(this.props.commits[0].sha, 0)
     }
 
     extractIssues = async (message) => {
@@ -1657,12 +1659,13 @@ class Network extends Component{
                 .scaleExtent([1, 1])
                 .translateExtent([[0,0], [commitsWithX[0].x + MARGINS.right - offset, height]])
                 .on('zoom', () => {
+                    let timeline = d3.select('#timeline')
                     let network = d3.select('#network-graph-group')
-                    // let translate = network.attr('transform').match(/.*translate\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\).*/)
-                    
                     let t = d3.event.transform;
                     let transform = `translate(${t.x},${t.y})`
+                    let trans_x = `translate(${t.x},20)`
                     network.attr("transform", d3.event.transform);
+                    timeline.attr("transform", trans_x)
                 })
                 
         let zoomContainer = canvas.append('rect')
@@ -1699,7 +1702,7 @@ class Network extends Component{
                     .attr('x1', d.x)
                     .attr('x2', d.x)
                     .attr('y1', '-7')
-                    .attr('y2', '-5')
+                    .attr('y2', '-3')
             })
 
         let monthsLayer = timeline.append('g')
@@ -1712,7 +1715,7 @@ class Network extends Component{
                 .attr('fill', 'black')
                 .attr('text-anchor', 'middle')
                 .attr('x', (d) => ((d.start-d.end)/2) + d.end)
-                .attr('y', -5)
+                .attr('y', -4)
                 .text((d) => networkClass.getWordMonth(d.month))
 
         let lineGuides = timeline.append('g')
@@ -2002,8 +2005,180 @@ class Network extends Component{
                 <div id='network-graph-wrapper'>
                     <svg id='network-graph'></svg>  
                 </div>
-                <div id='commit-box-wrapper'>
-                    <div id='commit-box'>
+                <div id='commit-box'>
+                    {commit_viewed &&
+                        <div id='commit'>
+                            <div id='commit-author-img'>
+                                <img src={commit_viewed.author ? commit_viewed.author.avatar_url : commit_viewed.commit.author.avatarUrl} alt=''/>
+                            </div>
+                            <div id='commit-text'>
+                                <div id='commit-info'>
+                                    <span id='commit-author' className='mr-5'>{commit_viewed.author ? commit_viewed.commit.author.name : commit_viewed.commit.author.user.name}</span>
+                                    <span id='commit-username' className='mr-5'>{`@${commit_viewed.author ? commit_viewed.author.login : commit_viewed.commit.author.name.replace(/\s/g, '')}`}</span>
+                                    <span id='commit-date'>{`on ${new Date(commit_viewed.commit.committer.date).toDateString()}`}</span>
+                                </div>
+                                <div id='commit-message'>
+                                    {commit_viewed.commit.message}
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    {files_viewed &&
+                        <div id='files-changed'>
+                            <div className='header'>
+                                <span className='first'>Files Changed</span>
+                                <span>Status</span>
+                                <span>Changes</span>
+                            </div>
+                            <div id='files-changed-list'>
+                                <div className='block'>
+                                {files_viewed.map((file, i) => {
+                                    let color
+                                    switch(file.status){
+                                        case 'modified':
+                                            color = 'orange';
+                                            break;
+                                        case 'removed':
+                                            color = 'red';
+                                            break;
+                                        case 'added':
+                                            color = 'green';
+                                            break;
+                                        default:
+                                            color = 'var(--color-1)';
+                                            break;
+
+                                    }
+
+                                    let additions = file.additions/file.changes*5
+                                    let deletions = file.deletions/file.changes*5
+                                    return(
+                                        <div key={i} className={i > 0 ? 'file' : 'file first'}>
+                                            <div className='filename'>{file.filename}</div>
+                                            <div className='status'>
+                                                <div style={{ color: color }}>{file.status}</div>
+                                            </div>
+                                            <div className='changes'><div>{file.changes}</div></div>
+                                            <div className='additions'>
+                                            {Array(additions).fill().map(() =>{
+                                                return(
+                                                    <div className='addition'></div>
+                                                )})}
+                                            </div>
+                                            <div className='deletions'>
+                                            {Array(deletions).fill().map(() =>{
+                                                return(
+                                                    <div className='deletion'></div>
+                                                )})}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    <div id='doing' className='issues'>
+                        <div className='title'>
+                            <div>IN PROGRESS</div>
+                            <div className='count'>{issues_viewed.doing ? issues_viewed.doing.length : 0}</div>
+                        </div>
+                        <div id='doing-issues'>
+                        {issues_viewed.doing && issues_viewed.doing.map((issue, i) => {
+                            return(
+                                <div key={i} className={i > 0 ? 'issue' : 'issue first'}>
+                                    <div className='issue-info'>
+                                        <div className='issue-data'>
+                                            <div className='issue-title'>{issue.title}</div>
+                                            {issue.milestone && 
+                                                <div className='issue-milestone'>
+                                                    <i className="fas fa-flag"></i>
+                                                    {issue.milestone.title}
+                                                </div>
+                                            }
+                                        </div>
+                                        
+                                    </div>
+                                    {issue.labels.length > 0 && <div className='issue-labels'>
+                                        {issue.labels.map((label, i) => {
+                                            return(
+                                                <div className='issue-label' key={i} 
+                                                    style={{ 
+                                                        background: `#${label.color}`,
+                                                        color: this.getTextColor(label.color)
+                                                    }}>
+
+                                                    {label.name}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>}
+                                    <div className='divider'></div>
+                                    {issue.assignees.length > 0 && <div className='issue-assignees'>
+                                        {issue.assignees.map((user, i) => {
+                                            return(
+                                                <div className='issue-assignee' key={i}>
+                                                    <img src={user.avatar_url}/>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>}
+                                </div>
+                            )
+                        })}
+                        </div>
+                    </div>
+                    <div id='done' className='issues'>
+                        <div className='title'>
+                            <div>DONE</div>
+                            <div className='count'>{issues_viewed.done ? issues_viewed.done.length : 0}</div>
+                        </div>
+                        <div id='done-issues'>
+                        {issues_viewed.done && issues_viewed.done.map((issue, i) => {
+                            return(
+                                <div key={i} className='issue'>
+                                    <div className='issue-info'>
+                                        <div className='issue-data'>
+                                            <div className='issue-title'>{issue.title}</div>
+                                            {issue.milestone && 
+                                                <div className='issue-milestone'>
+                                                    <i className="fas fa-flag"></i>
+                                                    {issue.milestone.title}
+                                                </div>
+                                            }
+                                        </div>
+                                        
+                                    </div>
+                                    {issue.labels.length > 0 && <div className='issue-labels'>
+                                        {issue.labels.map((label, i) => {
+                                            return(
+                                                <div className='issue-label' key={i} 
+                                                    style={{ 
+                                                        background: `#${label.color}`,
+                                                        color: this.getTextColor(label.color)
+                                                    }}>
+
+                                                    {label.name}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>}
+                                    <div className='divider'></div>
+                                    {issue.assignees.length > 0 && <div className='issue-assignees'>
+                                        {issue.assignees.map((user, i) => {
+                                            return(
+                                                <div className='issue-assignee' key={i}>
+                                                    <img src={user.avatar_url}/>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>}
+                                </div>
+                            )
+                        })}
+                        </div>
+                    </div>
+                    {/*<div id='commit-box'>
                         <div id='commit'>
                             {commit_viewed &&
                             <div className='wrapper'>
@@ -2159,7 +2334,7 @@ class Network extends Component{
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div>*/}
                 </div>
             </div>
         )
