@@ -27,8 +27,12 @@ class Network extends Component{
             page: 0,
             LAST_X: 0,
             NEXT_X: 0,
-            TRIGGER_X: 0,
+            TRIGGER_X: null,
+            COMMITS_PER_PAGE: 50,
             parents: {},
+            draw_paths: [],
+            draw_branches: null,
+            draw_tags: null,
             
             WIDTH: null,
             HEIGHT: null,
@@ -93,6 +97,7 @@ class Network extends Component{
         await this.getBranchesNTags()
         await props.fetchPulls(props.username, props.reponame)
         await props.fetchCommits(props.username, props.reponame, props.checkout, props.checkout_from)
+        await this.setState({ draw_pulls: this.props.pulls })
         await this.setState({ commit_viewed: this.props.commits[0] })
         await this.extractIssues(this.props.commits[0].commit.message);
         await this.getFiles(this.props.commits[0].sha, 0)
@@ -176,7 +181,8 @@ class Network extends Component{
     }
 
     getYCoords = async (commitsWithX) => {
-        let parents = {}
+        let parents = this.state.parents
+        let draw_paths = []
 
         let commitsQ = commitsWithX.slice()
         let commitsWithYandX = commitsWithX.slice()
@@ -230,6 +236,7 @@ class Network extends Component{
                 // Fetch parent & record itself as child
                 let parent_sha = commit.parents[i].sha
                 let commitParent = commitsQ.find(x => x.sha === parent_sha)
+                commit.parents[i].index = commitParent ? commitParent.index : commitParent
                 let missingParent = commitParent ? false : true
                 if(!commitParent) commitParent = parents[parent_sha]
 
@@ -275,13 +282,15 @@ class Network extends Component{
                     if(this.props.master_sha === parent_sha){
                         y = this.state.MASTER_Y
                         if(!missingParent) commitsWithYandX[commitParent.index].y = y
-                        else commitParent.y = y
+                        else parents[parent_sha].y = y
                     }
                     // First parent goes to same row (except if from master)
                     else if(firstParent){
                         y = commitsWithYandX[commit.index].y
                         if(!missingParent) commitsWithYandX[commitParent.index].y = y
-                        else commitParent.y = y
+                        else {
+                            parents[parent_sha].y = y
+                        }
                     }
                     // Other parents goes to last new row
                     else{
@@ -303,13 +312,13 @@ class Network extends Component{
 
                         // Assign Y
                         if(!missingParent) commitsWithYandX[commitParent.index].y = +y
-                        else commitParent.y = +y
+                        else parents[parent_sha].y = +y
                     }
                     
                     if(!missingParent) {
                         commitsWithYandX[commitParent.index].drawn = true
                     }else{ 
-                        commitParent.drawn = true
+                        parents[parent_sha].drawn = true
                     }
 
                     // update Y_X tally
@@ -329,10 +338,10 @@ class Network extends Component{
                     if(!missingParent) {
                         commitsWithYandX[commitParent.index].y = y
                     }else {
-                        commitParent.y = y
                         let parent = await fetchCommit(this.props.username, this.props.reponame, parent_sha)
-                        commitParent = {
-                            ...commitParent,
+                        parents[parent_sha] = {
+                            ...parents[parent_sha],
+                            y,
                             commit: parent.commit
                         }
                     }
@@ -368,10 +377,12 @@ class Network extends Component{
                 if(firstParent && commitParent.y < commit.y){
                     // update Y_X tally
                     y = commit.y
-                    let parent = await fetchCommit(this.props.username, this.props.reponame, parent_sha)
-                    commitParent = {
-                        ...commitParent,
-                        commit: parent.commit
+                    if(missingParent && !commitParent.commit){
+                        let parent = await fetchCommit(this.props.username, this.props.reponame, parent_sha)
+                        commitParent = {
+                            ...commitParent,
+                            commit: parent.commit
+                        }
                     }
 
                     // update Y_X tally
@@ -388,20 +399,31 @@ class Network extends Component{
                 // Update first parent
                 firstParent = firstParent ? false : firstParent
             }
+
+            // Cached parent found
+            if(parents[commit.sha]){
+                // Record cached parent's children
+                parents[commit.sha].children.map((child) => {
+                    draw_paths.push(this.props.commits[child.index])
+                })
+                // Delete cache
+                delete parents[commit.sha]
+            }
         }
 
-        this.setState({ parents })
+        this.setState({ parents, draw_paths })
         console.log(parents)
         return commitsWithYandX
     }
 
     getXCoords = (commits) => {
+        let parents = this.state.parents
         let dates = []
         let months = []
 
         // Already initialized by getBranchesNTags
-        let fetchedBranches = this.props.canvas_branches
-        let fetchedTags = this.props.canvas_tags
+        let fetchedBranches = this.state.draw_branches
+        let fetchedTags = this.state.draw_tags
 
         let branches = fetchedBranches.slice()
         let branchesWithX = []
@@ -425,6 +447,7 @@ class Network extends Component{
         let currMonth = null
 
         let x = this.state.NEXT_X
+        let index_offset = this.state.page ? (this.state.page * this.state.COMMITS_PER_PAGE) - 1 : 0
         let commitsWithX = commits.map((commit, i) => {
             // Initialize date
             if(firstDate){
@@ -468,9 +491,17 @@ class Network extends Component{
             let c = {
                 x,
                 ...commit,
-                index: i,
+                index: index_offset + i,
                 drawn: false
             }
+
+            // Add cached data if parent was preloaded
+            if(parents[c.sha]){
+                c = {
+                    ...c,
+                    ...parents[c.sha]
+                }
+            } 
 
             // CHECK IF BRANCH/TAG POINTER IS FOUND
 
@@ -480,7 +511,7 @@ class Network extends Component{
                 // dequeue next branches with the same commit pointing to
                 while(!!branchesQ.length && branchesQ[0][1].sha === branch[1].sha){
                     let dup = branchesQ.shift()
-                    this.props.updateBranch(dup[0], 'commit', i)
+                    this.props.updateBranch(dup[0], 'commit', index_offset + i)
                 }
             }
             // dequeue a tag
@@ -489,7 +520,7 @@ class Network extends Component{
                 // dequeue next tags with the same commit pointing to
                 while(!!tagsQ.length && tagsQ[0][1].sha === tag[1].sha){
                     let dup = tagsQ.shift()
-                    this.props.updateTag(dup[0], 'commit', i)
+                    this.props.updateTag(dup[0], 'commit', index_offset + i)
                 }
             }
 
@@ -513,7 +544,7 @@ class Network extends Component{
 
             // BRANCH POINTER FOUND
             if(branch && commit.sha === branch[1].sha){
-                this.props.updateBranch(branch[0], 'commit', i)
+                this.props.updateBranch(branch[0], 'commit', index_offset + i)
 
                 let text = branch[1].others ? branch[0] + branch[1].others : branch[0]
                 branchGroup.append('text')
@@ -527,7 +558,7 @@ class Network extends Component{
                 let branchElem =  branchGroup.selectAll('.branch-name').last()
                 let bbox = branchElem.node().getBBox()
 
-                branch = { x, commit: i, text, width: bbox.width, height: bbox.height }
+                branch = { x, commit: index_offset + i, text, width: bbox.width, height: bbox.height }
                 branchesWithX.push(branch)
             
 
@@ -537,7 +568,7 @@ class Network extends Component{
                 // Get new branch
                 branch = null
             }else if(tag && commit.sha === tag[1].sha){
-                this.props.updateTag(tag[0], 'commit', i)
+                this.props.updateTag(tag[0], 'commit', index_offset + i)
 
                 let text = tag[1].others ? tag[0] + tag[1].others : tag[0]
                 tagGroup.append('text')
@@ -551,7 +582,7 @@ class Network extends Component{
                 let tagElem =  tagGroup.selectAll('.tag-name').last()
                 let bbox = tagElem.node().getBBox()
 
-                tag = { x, commit: i, text, width: bbox.width, height: bbox.height }
+                tag = { x, commit: index_offset + i, text, width: bbox.width, height: bbox.height }
                 tagsWithX.push(tag)
             
 
@@ -569,7 +600,10 @@ class Network extends Component{
             return c
         })
 
-        this.setState({ LAST_X: x + this.state.NODE_RADIUS + this.state.INTERVAL_X })
+        this.setState({ 
+            LAST_X: x + this.state.NODE_RADIUS + this.state.INTERVAL_X,
+            NEXT_X: x
+        })
         
         if(currDate) dates.push(currDate)
         if(currMonth) months.push(currMonth)
@@ -580,12 +614,14 @@ class Network extends Component{
         tagGroup.remove()
         this.props.setCanvasDisplay('branches', branchesWithX)
         this.props.setCanvasDisplay('tags', tagsWithX)
+        this.setState({ draw_branches: branchesQ, draw_tags: tagsQ })
 
         return commitsWithX
     }
 
     getPullsPaths = () => {
-        let pulls = this.props.pulls;
+        let pulls = this.state.draw_pulls;
+        let undrawn = [];
         let branches = this.props.branches;
         let commits = this.props.commits;
 
@@ -595,7 +631,7 @@ class Network extends Component{
             let base = branches[pulls[i].base.ref].commit;
             let head = branches[pulls[i].head.ref].commit
 
-            if(base !== null && head !== null){                
+            if(base !== null && head !== null){
                 let commit = commits[base];
                 let parent = commits[head];
 
@@ -788,7 +824,6 @@ class Network extends Component{
                 }
                 // Parent is above
                 else{
-                    
                     // Immediate above
                     if(parent.y === (commit.y-this.state.INTERVAL_Y)){
                         // Immediate left
@@ -949,9 +984,12 @@ class Network extends Component{
 
                     }
                 }
+            }else{
+                undrawn.push(pulls[i])
             }
         }
 
+        this.setState({ draw_pulls: undrawn })
         return paths
     }
 
@@ -962,7 +1000,7 @@ class Network extends Component{
             let commit = commits[i];
 
             for(j=0; j<commit.parents.length; j++){
-                let parent = commits.find(x => (x.sha === commit.parents[j].sha));
+                let parent = this.props.commits[commit.parents[j].index]
                 if(typeof(parent) === 'undefined') break;
 
                 let color = parent.y < commit.y ? commit.y : parent.y
@@ -1601,14 +1639,11 @@ class Network extends Component{
             return true
         })
 
-        await this.props.setCanvasDisplay('branches', branches)
-        await this.props.setCanvasDisplay('tags', tags)
+        this.setState({ draw_branches: branches, draw_tags: tags })
     }
 
     getColor = (y) => {
-        if(y === this.state.MASTER_Y) console.log(y)
         let color = ((y - this.state.MASTER_Y) / this.state.INTERVAL_Y) % 10
-        if(y === this.state.MASTER_Y) console.log(color)
         return this.state.colorScale(color)
     }
 
@@ -1782,13 +1817,32 @@ class Network extends Component{
         
         // NETWORK GRAPH
         let networkGraph = canvas.select('#network-graph-group')
-        // Draw paths
-        let parentPaths = this.getParentPaths(commits)
         let colorScale = this.getColor
 
+        // CACHED PATHS
+        if(this.state.draw_paths.length){
+            let cached_paths = this.getParentPaths(this.state.draw_paths)
+            networkGraph.append('g')
+                .attr('class', 'connections')
+                .selectAll('g')
+                .data(Object.entries(cached_paths))
+                .enter()
+                    .append('g')
+                    .selectAll('path')
+                    .data((d) => d[1].map((paths) => ({ ...paths, color: d[0] })))
+                    .enter()
+                        .append('path')
+                        .attr('data-color', (d) => d.color)
+                        .attr('class','connection')
+                        .style('fill', 'transparent')
+                        .style('stroke', (d) => colorScale(d.color))
+                        .attr('d', (d) => 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy)
+        }
+
         // CONNECTIONS PATHS
+        let parentPaths = this.getParentPaths(commits)
         networkGraph.append('g')
-            .attr('id', 'connections')
+            .attr('class', 'connections')
             .selectAll('g')
             .data(Object.entries(parentPaths))
             .enter()
@@ -1806,7 +1860,7 @@ class Network extends Component{
         // PULL REQUESTS PATHS
         let pullsPaths = this.getPullsPaths()
         networkGraph.append('g')
-            .attr('id', 'pulls')
+            .attr('class', 'pulls')
             .selectAll('g')
             .data(Object.entries(pullsPaths))
             .enter()
@@ -1824,7 +1878,7 @@ class Network extends Component{
         
         // COMMIT NODES
         networkGraph.append('g')
-            .attr('id', 'commit-nodes')
+            .attr('class', 'commit-nodes')
             .selectAll('circle')
             .data(commits)
             .enter()
@@ -1912,7 +1966,8 @@ class Network extends Component{
             .data(canvas_tags)
             .enter()
                 .append('text')
-                .attr('fill', (d) => networkClass.getTextColor(colorScale(d.y), true))
+                .attr('fill', (d) => colorScale(d.y))
+                // .attr('fill', (d) => networkClass.getTextColor(colorScale(d.y), true))
                 .attr('text-anchor', 'end')
                 .style('font', networkClass.state.branch_font)
                 .attr('x', (d) => d.x-15)
@@ -1924,10 +1979,10 @@ class Network extends Component{
             .data(canvas_tags)
             .enter()
                 .append('rect')
-                // .attr('fill', 'white')
-                // .style('stroke-width', '1px')
-                // .style('stroke', (d) => colorScale(d.y))
-                .attr('fill', (d) => colorScale(d.y))
+                .attr('fill', 'white')
+                .style('stroke-width', '1px')
+                .style('stroke', (d) => colorScale(d.y))
+                // .attr('fill', (d) => colorScale(d.y))
                 .attr('rx', 3)
                 .attr('ry', 3)
                 .attr('x', (d) => d.x - d.width - 20)
@@ -1940,7 +1995,7 @@ class Network extends Component{
             .enter()
             .append('path')
                     .style('fill', (d) => colorScale(d.y))
-                    .attr('d', (d) => `M${d.x-networkClass.state.NODE_RADIUS} ${d.y} L${d.x - 11} ${d.y - (d.height * 0.25)} L${d.x - 11} ${d.y + (d.height * 0.25)} Z`)
+                    .attr('d', (d) => `M${d.x-networkClass.state.NODE_RADIUS} ${d.y} L${d.x - 10} ${d.y - (d.height * 0.25)} L${d.x - 10} ${d.y + (d.height * 0.25)} Z`)
 
 
         if(this.state.page === 0){
