@@ -17,10 +17,6 @@ import '../styles/SearchBox.css'
 */
 
 export default class SearchBox extends Component {
-  constructor(props){
-    super(props);
-  }
-
   componentWillMount() {
     let init = this.props.initValue ? this.props.initValue : ''
 
@@ -43,6 +39,8 @@ export default class SearchBox extends Component {
         return <i className="fas fa-tag"></i>
       case 'COMMIT':
         return <i className="far fa-dot-circle"></i>
+      default:
+        break;
     }
   }
 
@@ -110,7 +108,7 @@ export default class SearchBox extends Component {
   }
 
   render() {
-    const { isLoading, value, results, placeholder } = this.state;
+    const { isLoading, results, placeholder } = this.state;
     const { width, id } = this.props;
 
     return (
@@ -197,6 +195,8 @@ class SearchResult extends Component {
         return <i className="fas fa-tag"></i>
       case 'COMMIT':
         return <i className="far fa-dot-circle"></i>
+      default:
+        break;
     }
   }
 

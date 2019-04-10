@@ -11,18 +11,20 @@ export function* authenticate(){
 		if (!options.headers) {
 			options.headers = {}
 		}
-		options.withCredentials = true
+
+		options.headers['Access-Control-Request-Headers'] = 'Content-Type, Authorization'
 		options.headers['authorization'] = 'Bearer 31b33190759de454348a4a70a3bc93420e62faba'
 		options.headers['Content-Type'] = 'application/json'
-
+		options.withCredentials = true
 		next()
 	})
-
 	yield fetch
 }
 
 export async function authenticateRest(url, json=false){
 	var bearer = 'Bearer 31b33190759de454348a4a70a3bc93420e62faba';
+	// var bearer = 'Bearer c43284ae83a0aadc7025181c9ad75e29008ac5b3';
+	
 	let response
 	if(json){
 		response = await fetch(url, {

@@ -78,6 +78,16 @@ export default function commitsReducer(state = {
 			}
 		}
 
+		case "ADD_COMMITS": {
+			return {
+				...state,
+				data: {
+					...state.data,
+					commits: [...state.data.commits, action.payload.commits]
+				}
+			}
+		}
+
 		default:{
 			return state
 		}		

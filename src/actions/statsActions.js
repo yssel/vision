@@ -1,4 +1,4 @@
-import { authenticate, authenticateRest } from './fetchActions';
+import { authenticateRest } from './fetchActions';
 
 export async function getCommitActivity (user, repo) {
 	let link = `https://api.github.com/repos/${user}/${repo}/stats/commit_activity`

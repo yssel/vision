@@ -50,7 +50,6 @@ class Stats extends Component{
 
 	drawGraphs = () => {
 		const { 
-			count, 
 			labels,
 			milestones, 
 			open_issues, 
@@ -336,6 +335,8 @@ class Stats extends Component{
     			})
     			console.log(data)
 		    	break;
+    		default:
+    			break;
     	}
 
     	let groupKey = 'week'
@@ -452,8 +453,8 @@ class Stats extends Component{
     }
 
 	render(){
-		const { master_name, branches, tags } = this.props;
-		const { count, labels, assignees, milestones } = this.state;
+		const { master_name } = this.props;
+		const { count, labels, milestones } = this.state;
 
 		return(
 			<div id='stats-page'>

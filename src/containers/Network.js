@@ -1,6 +1,6 @@
 import React, { Component} from 'react';
 import { connect } from 'react-redux';
-import { fetchCommits, updateCommits, fetchFiles } from '../actions/commitsActions'
+import { fetchCommits, fetchCommit, updateCommits, fetchFiles } from '../actions/commitsActions'
 import { updateBranch } from '../actions/branchesActions'
 import { updateTag } from '../actions/tagsActions'
 import { fetchIssue } from '../actions/issuesActions'
@@ -15,33 +15,38 @@ class Network extends Component{
     constructor(props){
         super(props);
         let timeline_font = '700 9px Raleway'
-        let font_family = 'Assistant'
+        let font_family = 'Roboto Slab'
         let font_size = 10
-        let font = `600 ${font_size}px ${font_family}`
+        let font = `400 ${font_size}px ${font_family}`
         // Initialize constants
         this.state = {
+            timeline_font,
+            branch_font: font,
+            branch_font_size: font_size,
+
+            page: 0,
+            LAST_X: 0,
+            NEXT_X: 0,
+            TRIGGER_X: 0,
+            parents: {},
+            
+            WIDTH: null,
+            HEIGHT: null,
             MAX_HEIGHT: null,
-            MIN_HEIGHT: window.innerHeight*0.5,
             MAX_WIDTH: window.innerWidth*0.95,
-            MIN_WIDTH: 1000,
             MARGINS: { top: 20, bottom: 20, left: 20, right: 20 },
             TRANS_X: 0,
             TRANS_Y: 0,
-            GRAPH_X: 0,
-            GRAPH_Y: 0,
             NODE_RADIUS: 4,
             INTERVAL_X: 20,
             INTERVAL_Y: 30,
             MASTER_Y: 20,
             panning: false,
-            timeline_font,
-            branch_font: font,
-            branch_font_size: font_size,
             paths: null,
             issues_viewed: [],
             commit_viewed: null,
             files_viewed: null,
-            Y_X: {} //keeps track of nearest X (node) per Y (row)
+            Y_X: {} //keeps track of nearest X (node) per Y (row) // NOW STORES DATE not x
         }
 
         d3.selection.prototype.first = function() { return d3.select(this.nodes()[0]) }
@@ -49,77 +54,50 @@ class Network extends Component{
     }
 
     componentDidMount(){
-        this.getData(this.props);
+        this.init(this.props);
         this.setState({ MAX_HEIGHT: document.getElementById('network-graph-wrapper').clientHeight })
-    }
-
-    getDefs = () => {
-         // Contributor image links
-        // let defs = canvas.append('defs')
-            // .selectAll('pattern')
-            // .data(Object.entries(contributors))
-            // .enter()
-            //     .append('pattern')
-            //     .attr('id', (d) => d[0].replace(/\s/g, ''))
-            //     .attr('width', '100%')
-            //     .attr('height', '100%')
-            //     .append('image')
-            //         .attr('xlink:href', (d) => d[1])
-            //         .attr('width', 4*this.state.NODE_RADIUS)
-            //         .attr('height', 4*this.state.NODE_RADIUS)
     }
 
     getWordMonth = (month) => {
         switch (month) {
             case 0:
                 return 'Jan'
-                break;
             case 1:
                 return 'Feb'
-                break;
             case 2:
                 return 'Mar'
-                break;
             case 3:
                 return 'Apr'
-                break;
             case 4:
                 return 'May'
-                break;
             case 5:
                 return 'June'
-                break;
             case 6:
                 return 'July'
-                break;
             case 7:
                 return 'Aug'
-                break;
             case 8:
                 return 'Sep'
-                break;
             case 9:
                 return 'Oct'
-                break;
             case 10:
                 return 'Nov'
-                break;
             case 11:
                 return 'Dec'
-                break;
             default:
                 break;
         }
     }
 
-    getData = async (props) =>{
-        await props.fetchCommits(props.username, props.reponame, props.checkout, props.checkout_from)
-        await props.fetchPulls(props.username, props.reponame)
+    init = async (props) =>{
         await this.getBranchesNTags()
-        await this.drawNetwork();
+        await props.fetchPulls(props.username, props.reponame)
+        await props.fetchCommits(props.username, props.reponame, props.checkout, props.checkout_from)
         await this.setState({ commit_viewed: this.props.commits[0] })
         await this.extractIssues(this.props.commits[0].commit.message);
         await this.getFiles(this.props.commits[0].sha, 0)
+        await this.setUpCanvas(this.props.commits)
+        await this.drawNetwork(this.props.commits.slice());
     }
 
     extractIssues = async (message) => {
@@ -165,22 +143,22 @@ class Network extends Component{
 
     RGBToHex = (rgb) => {
         // Choose correct separator
-        let sep = rgb.indexOf(",") > -1 ? "," : " ";
-        // Turn "rgb(r,g,b)" into [r,g,b]
-        rgb = rgb.substr(4).split(")")[0].split(sep);
+        let sep = rgb.indexOf(',') > -1 ? ',' : ' ';
+        // Turn 'rgb(r,g,b)' into [r,g,b]
+        rgb = rgb.substr(4).split(')')[0].split(sep);
 
         let r = (+rgb[0]).toString(16),
         g = (+rgb[1]).toString(16),
         b = (+rgb[2]).toString(16);
 
-        if (r.length == 1)
-            r = "0" + r;
-        if (g.length == 1)
-            g = "0" + g;
-        if (b.length == 1)
-            b = "0" + b;
+        if (r.length === 1)
+            r = '0' + r;
+        if (g.length === 1)
+            g = '0' + g;
+        if (b.length === 1)
+            b = '0' + b;
 
-        return "" + r + g + b;
+        return '' + r + g + b;
     }
 
     getTextColor = (hex, convert) =>{
@@ -197,14 +175,15 @@ class Network extends Component{
         else return 'black'
     }
 
-    getYCoords = (commitsWithX) => {
+    getYCoords = async (commitsWithX) => {
+        let parents = {}
+
         let commitsQ = commitsWithX.slice()
         let commitsWithYandX = commitsWithX.slice()
         while(commitsQ.length){
             // get recentmost commit
             let commit = commitsQ.shift()
             let y
-
             // Draw itself
             // Check if the commit is NOT YET drawn,
             if(!commitsWithYandX[commit.index].drawn){
@@ -216,7 +195,7 @@ class Network extends Component{
                     // Get available Y Coordinate
                     y = -1
                     for(let row in this.state.Y_X){
-                        if(this.state.Y_X[row] > commit.x) {
+                        if((this.state.Y_X[row] - new Date(commit.commit.committer.date))>0) {
                             y = row
                             break
                         }
@@ -233,11 +212,11 @@ class Network extends Component{
 
                 commitsWithYandX[commit.index].drawn = true
                 // update Y_X tally
-                if(typeof(this.state.Y_X[y]) === 'undefined' || this.state.Y_X[y] > commit.x){
+                if(typeof(this.state.Y_X[y]) === 'undefined' || (this.state.Y_X[y] - new Date(commit.commit.committer.date)) > 0 ){
                     this.setState({
                         Y_X: {
                             ...this.state.Y_X,
-                            [y] : commit.x
+                            [y] : new Date(commit.commit.committer.date)
                         }
                     })
                 }
@@ -249,49 +228,68 @@ class Network extends Component{
             for(i=0; i<commit.parents.length; i++){
                 // Check if parent has been drawn
                 // Fetch parent & record itself as child
-                let commitParent = commitsQ.find(x => x.sha === commit.parents[i].sha)
-                if(commitParent.children){
-                    commitParent.children.push({
-                        sha: commit.sha,
-                        x: commit.x,
-                        y: commit.y,
-                        index: commit.index
-                    })
+                let parent_sha = commit.parents[i].sha
+                let commitParent = commitsQ.find(x => x.sha === parent_sha)
+                let missingParent = commitParent ? false : true
+                if(!commitParent) commitParent = parents[parent_sha]
+
+                if(commitParent){
+                    if(commitParent.children){
+                        commitParent.children.push({
+                            sha: commit.sha,
+                            x: commit.x,
+                            y: commit.y,
+                            index: commit.index
+                        })
+                    }else{
+                        commitParent.children = [{
+                            sha: commit.sha,
+                            x: commit.x,
+                            y: commit.y,
+                            index: commit.index
+                        }]
+                    }
                 }else{
-                    commitParent.children = [{
-                        sha: commit.sha,
-                        x: commit.x,
-                        y: commit.y,
-                        index: commit.index
-                    }]
+                    parents[parent_sha] = {
+                        children: [{
+                            sha: commit.sha,
+                            x: commit.x,
+                            y: commit.y,
+                            index: commit.index
+                        }]
+                    }
+                    commitParent = parents[parent_sha]
                 }
                 
-                // Check if this parent has been drawn
-                let parentDrawn = true
-                if(typeof(commitParent) !== "undefined") {
-                    parentDrawn = commitParent.drawn
-                }
-                let test = false
-                
-                if(!parentDrawn){
+                // Check if this parent is not yet drawn
+                if(!commitParent.drawn){
+                    if(missingParent && !commitParent.commit){
+                        let parent = await fetchCommit(this.props.username, this.props.reponame, parent_sha)
+                        commitParent = {
+                            ...commitParent,
+                            commit: parent.commit
+                        }
+                    }
 
                     // Master special case
-                    if(this.props.master_sha === commitParent.sha){
-                        
-                        commitsWithYandX[commitParent.index].y = this.state.MASTER_Y
+                    if(this.props.master_sha === parent_sha){
                         y = this.state.MASTER_Y
+                        if(!missingParent) commitsWithYandX[commitParent.index].y = y
+                        else commitParent.y = y
                     }
                     // First parent goes to same row (except if from master)
                     else if(firstParent){
-                        commitsWithYandX[commitParent.index].y = commitsWithYandX[commit.index].y
                         y = commitsWithYandX[commit.index].y
+                        if(!missingParent) commitsWithYandX[commitParent.index].y = y
+                        else commitParent.y = y
                     }
                     // Other parents goes to last new row
                     else{
                         // Get available Y Coordinate
                         y = -1
                         for(let row in this.state.Y_X){
-                            if(+row > commitsWithYandX[commit.index].y && this.state.Y_X[row] > commitParent.x) {
+                            // y can only be below (greater) the commit's y
+                            if(+row > commitsWithYandX[commit.index].y && (this.state.Y_X[row] - new Date(commitParent.commit.committer.date)) > 0 ) {
                                 y = row
                                 break
                             }
@@ -304,32 +302,46 @@ class Network extends Component{
                         }
 
                         // Assign Y
-                        commitsWithYandX[commitParent.index].y = +y
+                        if(!missingParent) commitsWithYandX[commitParent.index].y = +y
+                        else commitParent.y = +y
                     }
                     
-                    commitsWithYandX[commitParent.index].drawn = true
+                    if(!missingParent) {
+                        commitsWithYandX[commitParent.index].drawn = true
+                    }else{ 
+                        commitParent.drawn = true
+                    }
+
                     // update Y_X tally
                     if(typeof(this.state.Y_X[y]) === 'undefined' || 
-                        this.state.Y_X[y] > commitParent.x){
-                        
+                        (this.state.Y_X[y] - new Date(commitParent.commit.committer.date)) > 0){
                         this.setState({
                             Y_X: {
                                 ...this.state.Y_X,
-                                [y] : commitParent.x
+                                [y] : new Date(commitParent.commit.committer.date)
                             }
                         })
                     }
 
-
                 }else if(firstParent && commitParent.y > commit.y){
                     // FIX UP PARENT (no FIRST parent can be below its commit. Fix y)
                     y = commit.y
-                    commitsWithYandX[commitParent.index].y = y
+                    if(!missingParent) {
+                        commitsWithYandX[commitParent.index].y = y
+                    }else {
+                        commitParent.y = y
+                        let parent = await fetchCommit(this.props.username, this.props.reponame, parent_sha)
+                        commitParent = {
+                            ...commitParent,
+                            commit: parent.commit
+                        }
+                    }
+
                     // Notify new Y value to its children
                     for(let x=0; x<commitParent.children.length; x++){
                         let child = commitsWithYandX[commitParent.children[x].index]
                         for(let y=0; y<child.parents.length; y++){
-                            if(child.parents[y].sha === commitParent.sha){
+                            if(child.parents[y].sha === parent_sha){
                                 child.parents[y].y = y
                                 break;
                             }
@@ -337,11 +349,11 @@ class Network extends Component{
                     }
 
                     // update Y_X tally
-                    if(typeof(this.state.Y_X[y]) === 'undefined' || this.state.Y_X[y] > commitParent.x){
+                    if(typeof(this.state.Y_X[y]) === 'undefined' || (this.state.Y_X[y] - new Date(commitParent.commit.committer.date)) > 0){
                         this.setState({
                             Y_X: {
                                 ...this.state.Y_X,
-                                [y] : commitParent.x
+                                [y] : new Date(commitParent.commit.committer.date)
                             }
                         })
                     }
@@ -352,29 +364,44 @@ class Network extends Component{
                 commitsWithYandX[commit.index].parents[i].y = commitParent.y
 
                 // allocate space for path of diverging branch
+                // the space in the row of commit until parent's x is allocated for branching out
                 if(firstParent && commitParent.y < commit.y){
                     // update Y_X tally
                     y = commit.y
+                    let parent = await fetchCommit(this.props.username, this.props.reponame, parent_sha)
+                    commitParent = {
+                        ...commitParent,
+                        commit: parent.commit
+                    }
+
                     // update Y_X tally
-                    if(typeof(this.state.Y_X[y]) === 'undefined' || this.state.Y_X[y] > commitParent.x){
+                    if(typeof(this.state.Y_X[y]) === 'undefined' || (this.state.Y_X[y] - new Date(commitParent.commit.committer.date)) > 0){
                         this.setState({
                             Y_X: {
                                 ...this.state.Y_X,
-                                [y] : commitParent.x
+                                [y] : new Date(commitParent.commit.committer.date)
                             }
                         })
                     }
                 }
 
+                // Update first parent
                 firstParent = firstParent ? false : firstParent
             }
         }
+
+        this.setState({ parents })
+        console.log(parents)
         return commitsWithYandX
     }
 
-    getXCoords = (commits, fetchedBranches, fetchedTags, width) => {
+    getXCoords = (commits) => {
         let dates = []
         let months = []
+
+        // Already initialized by getBranchesNTags
+        let fetchedBranches = this.props.canvas_branches
+        let fetchedTags = this.props.canvas_tags
 
         let branches = fetchedBranches.slice()
         let branchesWithX = []
@@ -388,24 +415,16 @@ class Network extends Component{
             .append('g')
             .attr('id', 'tag-group')
 
-        let branchElems = branchGroup.selectAll('.branch-name')
-        let tagElems = tagGroup.selectAll('.tag-name')
-
         let branchesQ = branches.slice()
         let branch = null
         let tagsQ = tags.slice()
         let tag = null
 
-        let x = width - this.state.MARGINS.right
-        let offset = this.props.canvas_nameCount
-        // let offset = this.props.canvas_nameCount - (this.props.canvas_branches.length + this.props.canvas_tags.length - this.props.canvas_nameCount)
-        let removedStr = ''
-        let bboxStrwidth = 0
-
         let firstDate = true
         let currDate = null
         let currMonth = null
 
+        let x = this.state.NEXT_X
         let commitsWithX = commits.map((commit, i) => {
             // Initialize date
             if(firstDate){
@@ -444,13 +463,16 @@ class Network extends Component{
                 }
 
             }
-
+            
+            // Set X Coordinate for commit
             let c = {
                 x,
                 ...commit,
                 index: i,
                 drawn: false
             }
+
+            // CHECK IF BRANCH/TAG POINTER IS FOUND
 
             // dequeue a branch
             if(!!branchesQ.length && branch === null) { 
@@ -461,7 +483,7 @@ class Network extends Component{
                     this.props.updateBranch(dup[0], 'commit', i)
                 }
             }
-
+            // dequeue a tag
             if(!!tagsQ.length && tag === null) { 
                 tag = tagsQ.shift()
                 // dequeue next tags with the same commit pointing to
@@ -472,33 +494,24 @@ class Network extends Component{
             }
 
             if(!branchesQ.length && branch && new Date(branch[1].committedDate) > new Date(commit.commit.committer.date)){
-                if(!branch[1].dup) removedStr += branch[0]
                 branch = null
             }
-
             if(!tagsQ.length && tag && new Date(tag[1].committedDate) > new Date(commit.commit.committer.date)){
-                if(!tag[1].dup) removedStr += tag[0]
                 tag = null
             }
             
             // Remove branches not shown on graph
             while(!!branchesQ.length && branch && new Date(branch[1].committedDate) > new Date(commit.commit.committer.date)){
-                if(!branch[1].dup) removedStr += branch[0]
-                else removedStr += ', ' + branch[0]
-
                 this.props.updateBranch(branch[0], 'commit', null)
                 branch = branchesQ.shift()
             }
-
             // Remove tags not shown on graph
             while(!!tagsQ.length && tag && new Date(tag[1].committedDate) > new Date(commit.commit.committer.date)){
-                if(!tag[1].dup) removedStr += tag[0]
-                else removedStr += ', ' + tag[0]
-
                 this.props.updateTag(tag[0], 'commit', null)
                 tag = tagsQ.shift()
             }
 
+            // BRANCH POINTER FOUND
             if(branch && commit.sha === branch[1].sha){
                 this.props.updateBranch(branch[0], 'commit', i)
 
@@ -508,20 +521,17 @@ class Network extends Component{
                     .attr('text-anchor', 'end')
                     .attr('x', x)
                     .attr('y', 0)
-                    .style("font", this.state.branch_font)
+                    .style('font', this.state.branch_font)
                     .text(text)
 
                 let branchElem =  branchGroup.selectAll('.branch-name').last()
                 let bbox = branchElem.node().getBBox()
 
-                // new x = prev x - diameter - intervalOnX - length of branchname - paddingleft&right
-                bboxStrwidth += bbox.width
                 branch = { x, commit: i, text, width: bbox.width, height: bbox.height }
                 branchesWithX.push(branch)
             
-                offset--
 
-
+                // new x = prev x - diameter - intervalOnX - length of branchname - paddingleft&right
                 x -= this.state.NODE_RADIUS*2 + this.state.INTERVAL_X + bbox.width + 10
 
                 // Get new branch
@@ -535,19 +545,17 @@ class Network extends Component{
                     .attr('text-anchor', 'end')
                     .attr('x', x)
                     .attr('y', 0)
-                    .style("font", this.state.branch_font)
+                    .style('font', this.state.branch_font)
                     .text(text)
                 
                 let tagElem =  tagGroup.selectAll('.tag-name').last()
                 let bbox = tagElem.node().getBBox()
 
-                // new x = prev x - diameter - intervalOnX - length of tagname - paddingleft&right
-                bboxStrwidth += bbox.width
                 tag = { x, commit: i, text, width: bbox.width, height: bbox.height }
                 tagsWithX.push(tag)
             
-                offset--
 
+                // new x = prev x - diameter - intervalOnX - length of tagname - paddingleft&right
                 x -= this.state.NODE_RADIUS*2 + this.state.INTERVAL_X + bbox.width + 10
 
                 // Get new tag
@@ -561,28 +569,18 @@ class Network extends Component{
             return c
         })
 
+        this.setState({ LAST_X: x + this.state.NODE_RADIUS + this.state.INTERVAL_X })
+        
         if(currDate) dates.push(currDate)
         if(currMonth) months.push(currMonth)
-        this.props.setCanvasDisplay("dates", dates)
-        this.props.setCanvasDisplay("months", months)
+        this.props.setCanvasDisplay('dates', dates)
+        this.props.setCanvasDisplay('months', months)
 
         branchGroup.remove()
         tagGroup.remove()
-        this.props.setCanvasDisplay("branches", branchesWithX)
-        this.props.setCanvasDisplay("tags", tagsWithX)
+        this.props.setCanvasDisplay('branches', branchesWithX)
+        this.props.setCanvasDisplay('tags', tagsWithX)
 
-        let removedText = d3.select('#network-graph').append('text')
-            .attr('fill', 'white')
-            .attr('x', 0)
-            .attr('y', 12)
-            .style("font", this.state.branch_font)
-            .text(removedStr);
-
-        bboxStrwidth = Math.max(bboxStrwidth - this.props.canvas_nameStringWidth, 0)
-
-        let bbox = removedText.node().getBBox();
-        this.props.setCanvasDisplay("offset", Math.max(offset*10 + bbox.width - bboxStrwidth, 0))
-        removedText.remove()
         return commitsWithX
     }
 
@@ -592,7 +590,7 @@ class Network extends Component{
         let commits = this.props.commits;
 
         let paths = {}
-        let i,j
+        let i
         for(i=0; i<pulls.length; i++){
             let base = branches[pulls[i].base.ref].commit;
             let head = branches[pulls[i].head.ref].commit
@@ -612,7 +610,7 @@ class Network extends Component{
                 if(!paths[color]) paths[color] = []
 
                 // Parent on same row
-                if(parent.y == commit.y){
+                if(parent.y === commit.y){
                     // draw straight path
                     paths[color].push({
                         mx: commit.x, 
@@ -862,7 +860,7 @@ class Network extends Component{
                     // Far above
                     else{
                         // Immediate left
-                        if(parent.x == (commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
+                        if(parent.x === (commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
                             
                                 // Half up, Half left
                                 paths[color].push({
@@ -971,7 +969,7 @@ class Network extends Component{
                 if(!parentPaths[color]) parentPaths[color] = []
 
                 // Parent on same row
-                if(parent.y == commit.y){
+                if(parent.y === commit.y){
                     // draw straight path
                     parentPaths[color].push({
                         mx: commit.x, 
@@ -1367,7 +1365,7 @@ class Network extends Component{
                     // Far above
                     else{
                         // Immediate left
-                        if(parent.x == (commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
+                        if(parent.x === (commit.x-this.state.INTERVAL_X-(2*this.state.NODE_RADIUS))){
                             if(parent_alone){
                                 // Left up
                                 parentPaths[color].push({
@@ -1524,6 +1522,8 @@ class Network extends Component{
     getBranchesNTags = async () => {
         let branches = Object.entries(this.props.branches)
         let tags = Object.entries(this.props.tags)
+
+        // Sort branches and tags latest to oldest
         branches.sort(function(a, b) {
             a = new Date(a[1].committedDate);
             b = new Date(b[1].committedDate);
@@ -1568,6 +1568,8 @@ class Network extends Component{
                     string = ''
                 }
             }
+
+            return true
         })
 
         index = null
@@ -1596,19 +1598,30 @@ class Network extends Component{
                     string = ''
                 }
             }
+            return true
         })
 
-        await this.props.setCanvasDisplay('nameString', bboxStr)
         await this.props.setCanvasDisplay('branches', branches)
         await this.props.setCanvasDisplay('tags', tags)
-        await this.props.setCanvasDisplay('nameCount', count)
     }
 
-    drawNetwork = () => {
+    getColor = (y) => {
+        if(y === this.state.MASTER_Y) console.log(y)
+        let color = ((y - this.state.MASTER_Y) / this.state.INTERVAL_Y) % 10
+        if(y === this.state.MASTER_Y) console.log(color)
+        return this.state.colorScale(color)
+    }
+
+    setUpCanvas = (fetched_commits) => {
         let MAX_WIDTH = this.state.MAX_WIDTH;
         let MAX_HEIGHT = this.state.MAX_HEIGHT;
         let MARGINS = this.state.MARGINS;
-        let fetched_commits = this.props.commits.slice();
+
+        // Create color scale
+        let colorScale = d3.scaleOrdinal()
+            .domain([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+            .range(['#1d1919', '#660066', '#df0054', '#ff8b6a', '#01676b', '#21aa93', '#ffc15e', '#183661', '#87c0cd', '#ff5d9e'])
+        this.setState({ colorScale })
 
         // Set up canvas
         let canvas = d3.select('#network-graph')
@@ -1616,58 +1629,19 @@ class Network extends Component{
             .attr('height', MAX_HEIGHT) // Navbar size is 60
             .attr('focusable', false)
 
-
-        // Get branches && tags        
-        let namesString = this.props.canvas_nameString
-        let nameCount = this.props.canvas_nameCount
-        let branches = this.props.canvas_branches
-        let tags = this.props.canvas_tags
-
-        // Compute canvas width
-        let namesText = canvas.append('text')
-            .attr('fill', 'black')
-            .attr('x', 0)
-            .attr('y', 12)
-            .style("font", this.state.branch_font)
-            .text(namesString);
-        let bbox = namesText.node().getBBox();
-
-        this.props.setCanvasDisplay('nameStringWidth', bbox.width)
-
-        let width = (fetched_commits.length * 2 * this.state.NODE_RADIUS) + 
-                    ((fetched_commits.length-1) * this.state.INTERVAL_X) + 
-                    MARGINS.left + MARGINS.right +
-                    bbox.width + 
-                    (11 * nameCount)
-
-        this.props.setCanvasDisplay("width", width)
-        namesText.remove()
-
-
-        let commitsWithX = this.getXCoords(fetched_commits, branches, tags, width)
-        let commitsWithYandX = this.getYCoords(commitsWithX)
-        
-        let offset = this.props.canvas_offset
-        let screenWidth = width  > MAX_WIDTH ? (MAX_WIDTH - width) : 0;
-
-        // Get X and Y Coordinates
-        this.props.updateCommits(commitsWithYandX)
-        let commits = commitsWithYandX.slice()
-        let height = d3.max(commitsWithYandX.map(commit => commit.y))
+        this.setState({ NEXT_X: 0-MARGINS.right })
 
         let zoom = d3.zoom()
-                .scaleExtent([1, 1])
-                .translateExtent([[0,0], [commitsWithX[0].x + MARGINS.right - offset, height]])
-                .on('zoom', () => {
-                    let timeline = d3.select('#timeline')
-                    let network = d3.select('#network-graph-group')
-                    let t = d3.event.transform;
-                    let transform = `translate(${t.x},${t.y})`
-                    let trans_x = `translate(${t.x},20)`
-                    network.attr("transform", d3.event.transform);
-                    timeline.attr("transform", trans_x)
-                })
-                
+            .scaleExtent([1, 1])
+            .on('zoom', () => {
+                let timeline = d3.select('#timeline')
+                let network = d3.select('#network-graph-group')
+                let t = d3.event.transform;
+                let trans_x = `translate(${t.x},20)`
+                network.attr('transform', d3.event.transform);
+                timeline.attr('transform', trans_x)
+            })
+
         let zoomContainer = canvas.append('rect')
             .attr('id', 'zoom-handler')
             .attr('width', MAX_WIDTH)
@@ -1675,16 +1649,76 @@ class Network extends Component{
             .style('fill', 'none')
             .style('pointer-events', 'all')
 
-        zoom.translateBy(zoomContainer, screenWidth, 0)
         zoomContainer.call(zoom)
-        let initPan = d3.zoomTransform(d3.select('#zoom-handler').node())
+        this.setState({ zoom, zoomContainer })
+
+        // Timeline
+        canvas.append('g')
+            .attr('id', 'timeline')
+
+        // Network Graph
+        canvas.append('g')
+            .attr('id', 'network-graph-group')
+
+        canvas.on('mouseenter', function(){
+            this.focus()
+        })
+
+
+    }
+
+    getHeight = () => {
+        return d3.max(Object.keys(this.state.Y_X).map(y => Number(y)))
+    }
+
+    getWidth = () => {
+        let commits = this.props.commits
+        return commits[0].x - this.state.LAST_X + this.state.MARGINS.left + this.state.MARGINS.right
+    }
+
+    drawNetwork = async (fetched_commits) => {
+        let MAX_WIDTH = this.state.MAX_WIDTH;
+        let MAX_HEIGHT = this.state.MAX_HEIGHT;
+        let MARGINS = this.state.MARGINS;
+
+        let canvas = d3.select('#network-graph')
+
+        // Get X and Y Coordinates
+        let commitsWithX = this.getXCoords(fetched_commits)
+        let commitsWithYandX = await this.getYCoords(commitsWithX)
+        this.props.updateCommits(commitsWithYandX)
+
+        let commits = commitsWithYandX.slice()
+        let height = this.getHeight()
+        let width = this.getWidth()
+        this.setState({ WIDTH: width, HEIGHT: height })
+
+        let zoom = this.state.zoom
+        zoom.translateExtent([[this.state.LAST_X - MARGINS.left, 0], [commitsWithX[0].x + MARGINS.right, height]])
+        let zoomContainer = this.state.zoomContainer
+
+        if(this.state.page === 0) {
+            let translateX = MAX_WIDTH < width ? MAX_WIDTH : 0;
+            zoom.translateBy(zoomContainer, translateX, 0)
+            let initPan = d3.zoomTransform(zoomContainer.node())
+            
+            if(MAX_WIDTH < width){
+                canvas.select('#network-graph-group')
+                    .attr('transform', `translate(${initPan.x},${initPan.y})`)
+                canvas.select('#timeline')
+                    .attr('transform', `translate(${translateX},20)`)
+            }
+        }
+
+        // DRAW NETWORK OBJECTS
         let networkClass = this
 
-        let timeline = canvas.append('g')
-            .attr('id', 'timeline')
-            .attr('transform', 'translate('+initPan.x+',20)')
+        // TIMELINE
+        let timeline = canvas.select('#timeline')
+        // DATES (NUMBERS)
         let datesLayer = timeline.append('g')
         let dates = this.props.canvas_dates
+        // Numbers
         datesLayer.selectAll('text')
             .data(dates)
             .enter()
@@ -1695,7 +1729,7 @@ class Network extends Component{
                 .attr('x', (d) => d.x)
                 .attr('y', 7)
                 .text((d) => d.date)
-
+        // Ticks
         datesLayer.selectAll('text')
             .each((d) =>{
                 timeline.append('line')
@@ -1704,7 +1738,7 @@ class Network extends Component{
                     .attr('y1', '-7')
                     .attr('y2', '-3')
             })
-
+        // MONTHS (WORDS)
         let monthsLayer = timeline.append('g')
         let months = this.props.canvas_months
         monthsLayer.selectAll('text')
@@ -1717,8 +1751,7 @@ class Network extends Component{
                 .attr('x', (d) => ((d.start-d.end)/2) + d.end)
                 .attr('y', -4)
                 .text((d) => networkClass.getWordMonth(d.month))
-
-        let lineGuides = timeline.append('g')
+        // Line Span & Ticks
         monthsLayer.selectAll('text')
             .each((d,i,j) => {
                 let bbox = j[i].getBBox()
@@ -1747,23 +1780,16 @@ class Network extends Component{
                 }
             })
         
-        let networkGraph = canvas.append('g')
-            .attr('id', 'network-graph-group')
-            .attr('transform', 'translate('+initPan.x+','+initPan.y+')')
-        
+        // NETWORK GRAPH
+        let networkGraph = canvas.select('#network-graph-group')
         // Draw paths
         let parentPaths = this.getParentPaths(commits)
-        this.props.setCanvasDisplay("paths", parentPaths)
-        let colorScale = d3.scaleLinear().domain([this.state.MASTER_Y, height])
-                            .interpolate(d3.interpolateHcl)
-                            .range([d3.rgb("#660066"), d3.rgb('#FFF500')])
+        let colorScale = this.getColor
 
-        let yS = Object.keys(this.state.Y_X)
-        let colorScale1 = d3.scaleOrdinal()
-                            .domain(yS)
-                            .range(d3.quantize(t => d3.interpolateSpectral(t * 0.9), yS.length))
-
-        let connections = networkGraph.selectAll('g')
+        // CONNECTIONS PATHS
+        networkGraph.append('g')
+            .attr('id', 'connections')
+            .selectAll('g')
             .data(Object.entries(parentPaths))
             .enter()
                 .append('g')
@@ -1775,18 +1801,11 @@ class Network extends Component{
                     .attr('class','connection')
                     .style('fill', 'transparent')
                     .style('stroke', (d) => colorScale(d.color))
-                    .attr('d', (data) => {
-                        let d = data
-                        d.mx -= offset
-                        d.cx -= offset
-                        d.cx1 -= offset
-                        d.cx2 -= offset
-                        return 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy
-                    })
+                    .attr('d', (d) => 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy)
 
+        // PULL REQUESTS PATHS
         let pullsPaths = this.getPullsPaths()
-
-        let pullReqs = networkGraph.append('g')
+        networkGraph.append('g')
             .attr('id', 'pulls')
             .selectAll('g')
             .data(Object.entries(pullsPaths))
@@ -1801,23 +1820,17 @@ class Network extends Component{
                     .style('fill', 'transparent')
                     .style('stroke-linecap', 'round')
                     .style('stroke', (d) => colorScale(d.color))
-                    .attr('d', (data) => {
-                        let d = data
-                        d.mx -= offset
-                        d.cx -= offset
-                        d.cx1 -= offset
-                        d.cx2 -= offset
-                        return 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy
-                    })
+                    .attr('d', (d) => 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy)
         
-        
-        // Draw commit nodes
-        let commitNodes = networkGraph.selectAll('circle')
+        // COMMIT NODES
+        networkGraph.append('g')
+            .attr('id', 'commit-nodes')
+            .selectAll('circle')
             .data(commits)
             .enter()
                 .append('circle')
                 .attr('class', 'commit-node')
-                .attr('cx', (d) => (Number(d.x-offset)))
+                .attr('cx', (d) => (Number(d.x)))
                 .attr('cy', (d) => d.y)
                 .attr('r', networkClass.state.NODE_RADIUS)
                 .attr('stroke', (d) => colorScale(d.y))
@@ -1855,7 +1868,7 @@ class Network extends Component{
                 })
                 .attr('text-anchor', 'end')
                 .style('font', networkClass.state.branch_font)
-                .attr('x', (d) => d.x-15-offset)
+                .attr('x', (d) => d.x-15)
                 .attr('y', (d) => d.y+(networkClass.state.branch_font_size*0.25))
                 .text((d) => d.text)
 
@@ -1870,7 +1883,7 @@ class Network extends Component{
                 .attr('fill', (d) => colorScale(d.y))
                 .attr('rx', 3)
                 .attr('ry', 3)
-                .attr('x', (d) => d.x - d.width - 20 - offset)
+                .attr('x', (d) => d.x - d.width - 20)
                 .attr('y', (d) => d.y - (d.height * 0.5) - 1.5)
                 .attr('width', (d) => d.width + 10)
                 .attr('height', (d) => d.height + 3)
@@ -1880,7 +1893,7 @@ class Network extends Component{
             .enter()
             .append('path')
                     .style('fill', (d) => colorScale(d.y))
-                    .attr('d', (d) => `M${d.x-networkClass.state.NODE_RADIUS-offset} ${d.y} L${d.x - 11- offset} ${d.y - (d.height * 0.25)} L${d.x - 11- offset} ${d.y + (d.height * 0.25)} Z`)
+                    .attr('d', (d) => `M${d.x-networkClass.state.NODE_RADIUS} ${d.y} L${d.x - 11} ${d.y - (d.height * 0.25)} L${d.x - 11} ${d.y + (d.height * 0.25)} Z`)
 
         // Draw branch ui pointers
         let canvas_tags = this.props.canvas_tags
@@ -1902,7 +1915,7 @@ class Network extends Component{
                 .attr('fill', (d) => networkClass.getTextColor(colorScale(d.y), true))
                 .attr('text-anchor', 'end')
                 .style('font', networkClass.state.branch_font)
-                .attr('x', (d) => d.x-15-offset)
+                .attr('x', (d) => d.x-15)
                 .attr('y', (d) => d.y+(networkClass.state.branch_font_size*0.25))
                 .text((d) => d.text)
 
@@ -1917,7 +1930,7 @@ class Network extends Component{
                 .attr('fill', (d) => colorScale(d.y))
                 .attr('rx', 3)
                 .attr('ry', 3)
-                .attr('x', (d) => d.x - d.width - 20 - offset)
+                .attr('x', (d) => d.x - d.width - 20)
                 .attr('y', (d) => d.y - (d.height * 0.5) - 1.5)
                 .attr('width', (d) => d.width + 10)
                 .attr('height', (d) => d.height + 3)
@@ -1927,70 +1940,79 @@ class Network extends Component{
             .enter()
             .append('path')
                     .style('fill', (d) => colorScale(d.y))
-                    .attr('d', (d) => `M${d.x-networkClass.state.NODE_RADIUS-offset} ${d.y} L${d.x - 11- offset} ${d.y - (d.height * 0.25)} L${d.x - 11- offset} ${d.y + (d.height * 0.25)} Z`)
+                    .attr('d', (d) => `M${d.x-networkClass.state.NODE_RADIUS} ${d.y} L${d.x - 11} ${d.y - (d.height * 0.25)} L${d.x - 11} ${d.y + (d.height * 0.25)} Z`)
 
 
-        canvas.on('mouseenter', function(){
-            this.focus()
-        })
+        if(this.state.page === 0){
+            canvas.on('mouseenter', function(){
+                this.focus()
+            })
 
-        canvas.on('keydown', function(){
-            if(d3.event.key === 'ArrowLeft' || d3.event.key === 'ArrowRight' || d3.event.key === 'ArrowUp' || d3.event.key === 'ArrowDown'){
-                if(!networkClass.state.panning){
-                    networkClass.setState({ panning: true })
-                    // compute transform
-                    let network = d3.select('#network-graph-group')
-                    let timeline = d3.select('#timeline')
-                    let transform = network.attr('transform').match(/.*translate\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\).*/)
-                    let x = Number(transform ? transform[1] : 0)
-                    let y = Number(transform ? transform[2] : 0)
+            canvas.on('keydown', function(){
+                if(d3.event.key === 'ArrowLeft' || d3.event.key === 'ArrowRight' || d3.event.key === 'ArrowUp' || d3.event.key === 'ArrowDown'){
+                    if(!networkClass.state.panning){
+                        networkClass.setState({ panning: true })
+                        // compute transform
+                        let width = networkClass.state.WIDTH
+                        let height = networkClass.state.HEIGHT
+                        let network = d3.select('#network-graph-group')
+                        let timeline = d3.select('#timeline')
+                        let transform = network.attr('transform').match(/.*translate\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\).*/)
+                        let x = Number(transform ? transform[1] : 0)
+                        let y = Number(transform ? transform[2] : 0)
 
-                    // check keycode
-                    switch (d3.event.key) {
-                        case 'ArrowLeft': //left 
-                            x = MAX_WIDTH < width-offset ? Math.min(x+180, offset) : x
-                            break;
-                        case 'ArrowRight': // right
-                            x = MAX_WIDTH < width-offset ? Math.max(MAX_WIDTH - width + offset, x-180) : x
-                            break;
-                        case 'ArrowUp': // up
-                            y = MAX_HEIGHT < height ? Math.min(y+180,0) : y
-                            break;
-                        case 'ArrowDown':
-                            y = MAX_HEIGHT < height ? Math.max(MAX_HEIGHT - height, y-180) : y
-                            break;
-                        default:
-                            break;
+                        // check keycode
+                        switch (d3.event.key) {
+                            case 'ArrowLeft': //left 
+                                x = MAX_WIDTH < width ? Math.min(x+180, width) : x
+                                break;
+                            case 'ArrowRight': // right
+                                x = MAX_WIDTH < width ? Math.max(MAX_WIDTH, x-180) : x
+                                break;
+                            case 'ArrowUp': // up
+                                y = MAX_HEIGHT < height ? Math.min(y+180, 40) : y
+                                break;
+                            case 'ArrowDown':
+                                y = MAX_HEIGHT < height ? Math.max(MAX_HEIGHT - height - 20, y-180) : y
+                                break;
+                            default:
+                                break;
+                        }
+
+                        // Check excesses
+                        if(MAX_WIDTH < width) {
+                            x = x <= width ? x : width
+                            x = x >= MAX_WIDTH ? x : MAX_WIDTH
+                        }
+
+                        if(MAX_HEIGHT < height) {
+                            y = y <= 40 ? y : 40
+                            y = y >= MAX_HEIGHT - width - 20 ? y : MAX_HEIGHT - width - 20
+                        }
+
+                        // Transform graph
+                        network.transition()
+                            .duration(350)
+                            .attr('transform', `translate(${x},${y})`)
+                        timeline.transition()
+                            .duration(350)
+                            .attr('transform', `translate(${x},20)`)
+                        networkClass.setState({ TRANS_X: x, TRANS_Y: y })
                     }
-
-                    if(MAX_WIDTH < width-offset) x = x <= 0 ? x : 0
-                    if(MAX_HEIGHT < height) {
-                        y = y <= 0 ? y : 0
-                    }
-                    // Transform graph
-                    network.transition()
-                        .duration(350)
-                        .attr('transform', 'translate('+x+','+y+')')
-                    timeline.transition()
-                        .duration(350)
-                        .attr('transform', 'translate('+x+',20)')
-                    networkClass.setState({ TRANS_X: x, TRANS_Y: y })
                 }
-            }
-        }).on("focus", function(){});
-   
-        canvas.on('keyup', function(){
-            if(d3.event.key === 'ArrowLeft' || d3.event.key === 'ArrowRight' || d3.event.key === 'ArrowUp' || d3.event.key === 'ArrowDown'){
-                networkClass.setState({ panning: false })
-                let x = networkClass.state.TRANS_X
-                let y = networkClass.state.TRANS_Y
-                let t = d3.zoomTransform(zoomContainer.node())
-                zoom.translateBy(zoomContainer, x-t.x, y-t.y)
-            }
-        })
-
-
-
+            }).on('focus', function(){});
+       
+            canvas.on('keyup', function(){
+                if(d3.event.key === 'ArrowLeft' || d3.event.key === 'ArrowRight' || d3.event.key === 'ArrowUp' || d3.event.key === 'ArrowDown'){
+                    networkClass.setState({ panning: false })
+                    // notify zoom transform
+                    let x = networkClass.state.TRANS_X
+                    let y = networkClass.state.TRANS_Y
+                    let t = d3.zoomTransform(zoomContainer.node())
+                    zoom.translateBy(zoomContainer, x-t.x, y-t.y)
+                }
+            })
+        }
     }
 
     render(){
@@ -2032,7 +2054,7 @@ class Network extends Component{
                             </div>
                             <div id='files-changed-list'>
                                 <div className='block'>
-                                {files_viewed.map((file, i) => {
+                                {files_viewed && files_viewed.map((file, i) => {
                                     let color
                                     switch(file.status){
                                         case 'modified':
@@ -2050,8 +2072,10 @@ class Network extends Component{
 
                                     }
 
-                                    let additions = file.additions/file.changes*5
-                                    let deletions = file.deletions/file.changes*5
+                                    let additions = Math.floor(file.additions/file.changes*5)
+                                    let deletions = Math.floor(file.deletions/file.changes*5)
+                                    additions = isNaN(additions) ? 0 : additions
+                                    deletions = isNaN(deletions) ? 0 : deletions
                                     return(
                                         <div key={i} className={i > 0 ? 'file' : 'file first'}>
                                             <div className='filename'>{file.filename}</div>
@@ -2060,15 +2084,15 @@ class Network extends Component{
                                             </div>
                                             <div className='changes'><div>{file.changes}</div></div>
                                             <div className='additions'>
-                                            {Array(additions).fill().map(() =>{
+                                            {additions > 0 && Array(additions).fill().map((x, i) =>{
                                                 return(
-                                                    <div className='addition'></div>
+                                                    <div key={i} className='addition'></div>
                                                 )})}
                                             </div>
                                             <div className='deletions'>
-                                            {Array(deletions).fill().map(() =>{
+                                            {deletions > 0 && Array(deletions).fill().map((x,i) =>{
                                                 return(
-                                                    <div className='deletion'></div>
+                                                    <div key={i} className='deletion'></div>
                                                 )})}
                                             </div>
                                         </div>
@@ -2092,7 +2116,7 @@ class Network extends Component{
                                             <div className='issue-title'>{issue.title}</div>
                                             {issue.milestone && 
                                                 <div className='issue-milestone'>
-                                                    <i className="fas fa-flag"></i>
+                                                    <i className='fas fa-flag'></i>
                                                     {issue.milestone.title}
                                                 </div>
                                             }
@@ -2118,7 +2142,7 @@ class Network extends Component{
                                         {issue.assignees.map((user, i) => {
                                             return(
                                                 <div className='issue-assignee' key={i}>
-                                                    <img src={user.avatar_url}/>
+                                                    <img alt='' src={user.avatar_url}/>
                                                 </div>
                                             )
                                         })}
@@ -2142,7 +2166,7 @@ class Network extends Component{
                                             <div className='issue-title'>{issue.title}</div>
                                             {issue.milestone && 
                                                 <div className='issue-milestone'>
-                                                    <i className="fas fa-flag"></i>
+                                                    <i className='fas fa-flag'></i>
                                                     {issue.milestone.title}
                                                 </div>
                                             }
@@ -2168,7 +2192,7 @@ class Network extends Component{
                                         {issue.assignees.map((user, i) => {
                                             return(
                                                 <div className='issue-assignee' key={i}>
-                                                    <img src={user.avatar_url}/>
+                                                    <img alt='' src={user.avatar_url}/>
                                                 </div>
                                             )
                                         })}
@@ -2178,163 +2202,6 @@ class Network extends Component{
                         })}
                         </div>
                     </div>
-                    {/*<div id='commit-box'>
-                        <div id='commit'>
-                            {commit_viewed &&
-                            <div className='wrapper'>
-                                <div id='commit-details'>
-                                    {<div id='commit-author-img'>
-                                        <img src={commit_viewed.author ? commit_viewed.author.avatar_url : commit_viewed.commit.author.avatarUrl} alt=''/>
-                                    </div>}
-                                    <div id='commit-text'>
-                                        <div id='commit-info'>
-                                            <span id='commit-author' className='mr-5'>{commit_viewed.author ? commit_viewed.commit.author.name : commit_viewed.commit.author.user.name}</span>
-                                            <span id='commit-username' className='mr-5'>{`@${commit_viewed.author ? commit_viewed.author.login : commit_viewed.commit.author.name.replace(/\s/g, '')}`}</span>
-                                            <span id='commit-date'>{`on ${new Date(commit_viewed.commit.committer.date).toDateString()}`}</span>
-                                        </div>
-                                        <div id='commit-message'>
-                                            {commit_viewed.commit.message}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className='files-changed header'>FILES CHANGED</div>
-                                <div className='files status'>Status</div>
-                                <div className='files label'>Changes</div>
-                                <div className='files label'>Additions</div>
-                                <div className='files label'>Deletions</div>
-                                <div id='files-changed'>
-                                    {files_viewed && files_viewed.map((file, i) => {
-                                        return(
-                                            <div key={i} className='file'>
-                                                <div className='filename'>{file.filename}</div>
-                                                <div className='status'>{file.status}</div>
-                                                <div className='changes'>{file.changes}</div>
-                                                <div className='additions'>{file.additions}</div>
-                                                <div className='deletions'>{file.deletions}</div>
-                                            </div>
-                                        )
-                                    })
-                                    }
-                                </div>
-                            </div>
-                            }
-                        </div>
-                        <div id='commit-issues'>
-                            <div className='wrapper'>
-                                <div id='doing' className='issues'>
-                                    <div className='title'>IN PROGRESS</div>
-                                    <div className='issues-holder'>
-                                    {issues_viewed.doing && issues_viewed.doing.map((issue, i) => {
-                                        return(
-                                            <div key={i} className='issue'>
-                                                <div className='issue-info'>
-                                                    <div className='issue-data'>
-                                                        <div className='issue-title'>{issue.title}</div>
-                                                        {issue.milestone && 
-                                                            <div className='issue-milestone'>
-                                                                <i className="fas fa-flag"></i>
-                                                                {issue.milestone.title}
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                    
-                                                </div>
-                                                {issue.labels.length > 0 && <div className='issue-labels'>
-                                                    {issue.labels.map((label, i) => {
-                                                        return(
-                                                            <div className='issue-label' key={i} 
-                                                                style={{ 
-                                                                    background: `#${label.color}`,
-                                                                    color: this.getTextColor(label.color)
-                                                                }}>
-
-                                                                {label.name}
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </div>}
-                                                <div className='divider'></div>
-                                                {issue.assignees.length > 0 && <div className='issue-assignees'>
-                                                    {issue.assignees.map((user, i) => {
-                                                        return(
-                                                            <div className='issue-assignee' key={i}>
-                                                                <img src={user.avatar_url}/>
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </div>}
-                                            </div>
-                                        )
-                                    })}
-                                    </div>
-                                    {
-                                        (!issues_viewed.doing || issues_viewed.doing.length === 0) &&
-                                        <div className='issue-empty'>
-                                            {
-                                                this.props.issue_fetching && 
-                                                <i className="fas fa-circle-notch fa-spin"></i>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-
-                                <div id='done' className='issues'>
-                                    <div className='title'>DONE</div>
-                                    {issues_viewed.done && issues_viewed.done.map((issue, i) => {
-                                        return(
-                                            <div key={i} className='issue'>
-                                                <div className='issue-info'>
-                                                    <div className='issue-data'>
-                                                        <div className='issue-title'>{issue.title}</div>
-                                                        {issue.milestone && 
-                                                            <div className='issue-milestone'>
-                                                                <i className="fas fa-flag"></i>
-                                                                {issue.milestone.title}
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                    
-                                                </div>
-                                                {issue.labels.length > 0 && <div className='issue-labels'>
-                                                    {issue.labels.map((label, i) => {
-                                                        return(
-                                                            <div className='issue-label' key={i} 
-                                                                style={{ 
-                                                                    background: `#${label.color}`,
-                                                                    color: this.getTextColor(label.color)
-                                                                }}>
-
-                                                                {label.name}
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </div>}
-                                                <div className='divider'></div>
-                                                {issue.assignees.length > 0 && <div className='issue-assignees'>
-                                                    {issue.assignees.map((user, i) => {
-                                                        return(
-                                                            <div className='issue-assignee' key={i}>
-                                                                <img src={user.avatar_url}/>
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </div>}
-                                            </div>
-                                        )
-                                    })}
-                                    {
-                                        (!issues_viewed.done || issues_viewed.done.length === 0) &&
-                                        <div className='issue-empty'>
-                                            {
-                                                this.props.issue_fetching && 
-                                                <i className="fas fa-circle-notch fa-spin"></i>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    </div>*/}
                 </div>
             </div>
         )
@@ -2356,12 +2223,8 @@ function mapStateToProps(state){
         issue_fetching: state.issues.fetching,
         canvas_branches: state.ui.canvas.branches,
         canvas_tags: state.ui.canvas.tags,
-        canvas_nameString: state.ui.canvas.nameString,
-        canvas_nameStringWidth: state.ui.canvas.nameStringWidth,
-        canvas_nameCount: state.ui.canvas.nameCount,
-        canvas_offset: state.ui.canvas.offset,
         canvas_months: state.ui.canvas.months,
-        canvas_dates: state.ui.canvas.dates,
+        canvas_dates: state.ui.canvas.dates
     }
 }
 

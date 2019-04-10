@@ -67,34 +67,31 @@ class Main extends Component {
 					<div className='nav-tab'>
 					<NavLink to={`/${this.props.username}/${this.props.reponame}`} exact> 
 						<div><i className='fas fa-code-branch' style={{ transform: 'rotate(-90deg)' }}></i></div>
-						{/*<div>Network</div>*/}
 					</NavLink>
 					</div>
 					<div className='nav-tab'>
 					<NavLink to={`/${this.props.username}/${this.props.reponame}/stats`} exact> 
 						<div><i className='fas fa-chart-line'></i></div>
-						{/*<div>Stats</div>*/}
 					</NavLink>
 					</div>
 					<div className='nav-tab'>
 					<NavLink to={`/${this.props.username}/${this.props.reponame}/board`} exact> 
-						<div><i className='fas fa-columns'></i></div>
-						{/*<div>Board</div>*/}
+						<div><i className='fas fa-users'></i></div>
 					</NavLink>
 					</div>
-					<div className='nav-tab'>
+
+					{/*<div className='nav-tab'>
 					<NavLink to={`/${this.props.username}/${this.props.reponame}/activity`} exact> 
 						<div><i className='fas fa-bullseye'></i></div>
-						{/*<div>Activity</div>*/}
 					</NavLink>
-					</div>
+					</div>*/}
+					
 					</div>
 					<div id='logout' >
 						<div>
 							<div>
 								<NavLink to={`/`} exact> 
 									<div><i className='fas fa-sign-out-alt'></i></div>
-									{/*<div>Logout</div>*/}
 								</NavLink>
 							</div>
 						</div>
