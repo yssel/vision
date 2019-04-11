@@ -1,6 +1,6 @@
 import React, { Component} from 'react';
 import { connect } from 'react-redux';
-import { fetchCommits, fetchCommit, updateCommits, fetchFiles } from '../actions/commitsActions'
+import { fetchFirstCommit, fetchCommits, fetchCommit, updateCommits, updatePageCommits, pageCommits, fetchFiles } from '../actions/commitsActions'
 import { updateBranch } from '../actions/branchesActions'
 import { updateTag } from '../actions/tagsActions'
 import { fetchIssue } from '../actions/issuesActions'
@@ -25,6 +25,7 @@ class Network extends Component{
             branch_font_size: font_size,
 
             page: 0,
+            last_page: false,
             LAST_X: 0,
             NEXT_X: 0,
             TRIGGER_X: null,
@@ -94,15 +95,20 @@ class Network extends Component{
     }
 
     init = async (props) =>{
+        let firstCommit = await fetchFirstCommit(props.username, props.reponame)
+        await this.setState({ firstCommit: firstCommit[0] })
         await this.getBranchesNTags()
         await props.fetchPulls(props.username, props.reponame)
         await props.fetchCommits(props.username, props.reponame, props.checkout, props.checkout_from)
-        await this.setState({ draw_pulls: this.props.pulls })
-        await this.setState({ commit_viewed: this.props.commits[0] })
+        await this.setState({ 
+            draw_pulls: this.props.pulls,
+            commit_viewed: this.props.commits[0]
+        })
         await this.extractIssues(this.props.commits[0].commit.message);
         await this.getFiles(this.props.commits[0].sha, 0)
         await this.setUpCanvas(this.props.commits)
         await this.drawNetwork(this.props.commits.slice());
+        await this.loadPage()
     }
 
     extractIssues = async (message) => {
@@ -184,8 +190,9 @@ class Network extends Component{
         let parents = this.state.parents
         let draw_paths = []
 
+        let all_commits = this.props.commits
         let commitsQ = commitsWithX.slice()
-        let commitsWithYandX = commitsWithX.slice()
+        let commitsWithYandX = all_commits.slice()
         while(commitsQ.length){
             // get recentmost commit
             let commit = commitsQ.shift()
@@ -242,12 +249,15 @@ class Network extends Component{
 
                 if(commitParent){
                     if(commitParent.children){
-                        commitParent.children.push({
-                            sha: commit.sha,
-                            x: commit.x,
-                            y: commit.y,
-                            index: commit.index
-                        })
+                        let child = commitParent.children.find(x => x.sha === commit.sha)
+                        if(!child){
+                            commitParent.children.push({
+                                sha: commit.sha,
+                                x: commit.x,
+                                y: commit.y,
+                                index: commit.index
+                            })
+                        }
                     }else{
                         commitParent.children = [{
                             sha: commit.sha,
@@ -404,7 +414,16 @@ class Network extends Component{
             if(parents[commit.sha]){
                 // Record cached parent's children
                 parents[commit.sha].children.map((child) => {
-                    draw_paths.push(this.props.commits[child.index])
+                    let c = this.props.commits[child.index]
+                    for(let x=0; x<c.parents.length; x++){
+                        if(c.parents[x].sha === commit.sha){
+                            c.parents[x].index = commit.index
+                            c.parents[x].y = commit.y
+                            c.parents[x].drawn = commit.drawn
+                            break
+                        }
+                    }
+                    draw_paths.push(c)
                 })
                 // Delete cache
                 delete parents[commit.sha]
@@ -412,7 +431,6 @@ class Network extends Component{
         }
 
         this.setState({ parents, draw_paths })
-        console.log(parents)
         return commitsWithYandX
     }
 
@@ -447,7 +465,7 @@ class Network extends Component{
         let currMonth = null
 
         let x = this.state.NEXT_X
-        let index_offset = this.state.page ? (this.state.page * this.state.COMMITS_PER_PAGE) - 1 : 0
+        let index_offset = this.state.page ? (this.state.page * this.state.COMMITS_PER_PAGE) : 0
         let commitsWithX = commits.map((commit, i) => {
             // Initialize date
             if(firstDate){
@@ -1692,14 +1710,25 @@ class Network extends Component{
             .attr('id', 'timeline')
 
         // Network Graph
-        canvas.append('g')
+        let networkGraph = canvas.append('g')
             .attr('id', 'network-graph-group')
+
+        networkGraph.append('g')
+            .attr('id', 'cached-connections')
+        networkGraph.append('g')
+            .attr('id', 'connections')
+        networkGraph.append('g')
+            .attr('id', 'pulls')
+        networkGraph.append('g')
+            .attr('id', 'branch-pointers')
+        networkGraph.append('g')
+            .attr('id', 'tag-pointers')
+        networkGraph.append('g')
+            .attr('id', 'commit-nodes')
 
         canvas.on('mouseenter', function(){
             this.focus()
         })
-
-
     }
 
     getHeight = () => {
@@ -1720,8 +1749,14 @@ class Network extends Component{
 
         // Get X and Y Coordinates
         let commitsWithX = this.getXCoords(fetched_commits)
+        this.props.updatePageCommits(commitsWithX, this.state.page)
         let commitsWithYandX = await this.getYCoords(commitsWithX)
         this.props.updateCommits(commitsWithYandX)
+        let lastDate = this.props.commits[this.props.commits.length-1].commit.committer.date
+        this.setState({
+            last_date: lastDate,
+            last_page: new Date(this.state.firstCommit.commit.committer.date) - new Date(lastDate) >= 0
+        })
 
         let commits = commitsWithYandX.slice()
         let height = this.getHeight()
@@ -1822,8 +1857,8 @@ class Network extends Component{
         // CACHED PATHS
         if(this.state.draw_paths.length){
             let cached_paths = this.getParentPaths(this.state.draw_paths)
-            networkGraph.append('g')
-                .attr('class', 'connections')
+            networkGraph.select('#cached-connections')
+                .append('g')
                 .selectAll('g')
                 .data(Object.entries(cached_paths))
                 .enter()
@@ -1840,9 +1875,10 @@ class Network extends Component{
         }
 
         // CONNECTIONS PATHS
-        let parentPaths = this.getParentPaths(commits)
-        networkGraph.append('g')
-            .attr('class', 'connections')
+        let draw_commits = commits.slice(this.state.page * this.state.COMMITS_PER_PAGE, (this.state.page + 1)* this.state.COMMITS_PER_PAGE)
+        let parentPaths = this.getParentPaths(draw_commits)
+        networkGraph.select('#connections')
+            .append('g')
             .selectAll('g')
             .data(Object.entries(parentPaths))
             .enter()
@@ -1859,8 +1895,8 @@ class Network extends Component{
 
         // PULL REQUESTS PATHS
         let pullsPaths = this.getPullsPaths()
-        networkGraph.append('g')
-            .attr('class', 'pulls')
+        networkGraph.select('#pulls')
+            .append('g')
             .selectAll('g')
             .data(Object.entries(pullsPaths))
             .enter()
@@ -1877,10 +1913,10 @@ class Network extends Component{
                     .attr('d', (d) => 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy)
         
         // COMMIT NODES
-        networkGraph.append('g')
-            .attr('class', 'commit-nodes')
+        networkGraph.select('#commit-nodes')
+            .append('g')
             .selectAll('circle')
-            .data(commits)
+            .data(draw_commits)
             .enter()
                 .append('circle')
                 .attr('class', 'commit-node')
@@ -1908,8 +1944,8 @@ class Network extends Component{
             })
         })
 
-        let branchBoxLayer = networkGraph.append('g')
-        let branchTextLayer = networkGraph.append('g')
+        let branchBoxLayer = networkGraph.select('#branch-pointers').append('g')
+        let branchTextLayer = networkGraph.select('#tag-pointers').append('g')
         
         // text
         branchTextLayer.selectAll('text')
@@ -2070,6 +2106,14 @@ class Network extends Component{
         }
     }
 
+    loadPage = async () => {
+        if(!this.state.last_page){
+            let commits = await pageCommits(this.props.username, this.props.reponame, this.props.checkout, this.props.checkout_from, this.state.last_date)
+            this.setState({ page: this.state.page+1 })
+            await this.drawNetwork(commits)
+        }
+    }
+
     render(){
         const { 
             issues_viewed, 
@@ -2096,6 +2140,7 @@ class Network extends Component{
                                 </div>
                                 <div id='commit-message'>
                                     {commit_viewed.commit.message}
+                                    {commit_viewed.sha}
                                 </div>
                             </div>
                         </div>
@@ -2290,6 +2335,7 @@ function mapDispatchToProps(dispatch){
         fetchCommits: async (owner, name, type, fetchPoint) => await dispatch(fetchCommits(owner, name, type, fetchPoint)),
         fetchPulls: async (owner, name, type, fetchPoint) => await dispatch(fetchPulls(owner, name)),
         updateCommits: (commits) => dispatch(updateCommits(commits)),
+        updatePageCommits: (commits, page) => dispatch(updatePageCommits(commits, page)),
         updateBranch: (branch, field, value) => dispatch(updateBranch(branch, field, value)),
         updateTag: (tag, field, value) => dispatch(updateTag(tag, field, value)),
         setCanvasDisplay: (field, value) => dispatch(setCanvasDisplay(field, value))

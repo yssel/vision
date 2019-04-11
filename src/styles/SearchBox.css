@@ -41,6 +41,7 @@
 	border-radius: 2px;
 	overflow: hidden;
 	border: 0.2px solid #cacaca;
+	z-index: 99;
 }
 
 #search-box .results-wrapper{

@@ -32,12 +32,29 @@ export async function fetchBranchCommitsCount(user, repo, branch) {
 	return Number(lastPage)
 }
 
+export async function fetchFirstCommit(user, repo){
+	let link = `https://api.github.com/repos/${user}/${repo}/commits?per_page=1`
+	// fetch header 
+	let response = await authenticateRest(link)
+	let headerLink = response.headers.get('Link')
+	if(headerLink){
+		let lastPage = headerLink.match(/&page=(\d*)>; rel="last"/)[1]
+		// Parse link to get last page
+		// fetch init commit
+		let initCommitLink = `https://api.github.com/repos/${user}/${repo}/commits?per_page=1&page=${lastPage}`
+		let initCommit = await authenticateRest(initCommitLink, true)
+		return initCommit
+	}else{
+		let initCommit = await authenticateRest(link, true)
+		return initCommit
+	}
+}
+
 async function fetchInitCommit(user, repo){
 	let link = `https://api.github.com/repos/${user}/${repo}/commits?per_page=1`
 	// fetch header 
 	let response = await authenticateRest(link)
 	let headerLink = response.headers.get('Link')
-	console.log(headerLink)
 	// Parse link to get last page
 	let lastPage = headerLink.match(/&page=(\d*)>; rel="last"/)[1]
 	// fetch init commit
@@ -155,7 +172,62 @@ async function fetchRepoCommits(username, reponame, branchCursor = null, untilDa
 	        target {
 			# Fetch 100 Commits per branch
 	        ...on Commit {
-	        history(first: 50, until: ${untilDate}){
+	        history(first: 50, until: ${untilDate ? `"${untilDate}"` : null }){
+				edges{
+					node{
+						sha: oid
+						message
+						html_url: url
+						author {
+							user { name }
+							name
+							avatarUrl
+						}
+						committer{
+							user { name }
+							name
+							avatarUrl
+						}
+						committedDate
+						parents(first: 2){
+							edges{
+								node{
+									sha: oid
+								}
+							}
+						}
+					}
+				}
+	            }
+	            }
+	          }
+	        }
+	      }
+	      pageInfo {
+	        endCursor
+	        hasNextPage
+	      }
+	    }
+	  }
+	}`
+
+	let response = await commitsFetch({ query })
+	return response
+}
+
+async function fetchPageCommits(username, reponame, branchCursor = null, untilDate = null, sinceDate = null){
+	const commitsFetch = authenticate().next().value
+	let query = `query {
+	  repository(owner: "${username}", name: "${reponame}") {
+		# Fetch branches
+	    refs(first: 100, refPrefix: "refs/heads/", after: ${branchCursor}) {
+	      edges{
+	        node {
+	        name
+	        target {
+			# Fetch 100 Commits per branch
+	        ...on Commit {
+	        history(first: 51, until: ${untilDate ? `"${untilDate}"` : null }){
 				edges{
 					node{
 						sha: oid
@@ -199,7 +271,7 @@ async function fetchRepoCommits(username, reponame, branchCursor = null, untilDa
 }
 
 async function fetchAllCommits(dispatch, username, reponame, lastDate){
-	let firstCommitDate = await fetchInitCommit(username, reponame) 
+	// let firstCommitDate = await fetchInitCommit(username, reponame) 
 	try {
 		// While last commit is not yet fetched
 		let success = true
@@ -210,7 +282,7 @@ async function fetchAllCommits(dispatch, username, reponame, lastDate){
 			// Fetch 100 commits from 100 branch (API Limit)
 			let response = await fetchRepoCommits(username, reponame, null, lastDate)
 			if(!response.errors){
-				// Initial 100 branches - 100 commits
+				// Initial 100 branches - 50 commits
 				response.data.repository.refs.edges.map(
 					(branch) => 
 						fetched_commits = fetched_commits.concat(branch.node.target.history.edges))
@@ -317,6 +389,98 @@ async function fetchAllCommits(dispatch, username, reponame, lastDate){
 	}
 }
 
+async function pageAllCommits(username, reponame, lastDate){
+	try {
+		let success = true
+		let repoCommits
+		while(success){
+			let fetched_commits = [] // collects fetched commits for all branches
+			let response = await fetchPageCommits(username, reponame, null, lastDate)
+			if(!response.errors){
+				// Fetch 51 commits from 100 branch (PAGE)
+				// First is disregarded because it's a duplicate of last commit
+				response.data.repository.refs.edges.map(
+					(branch) => 
+						fetched_commits = fetched_commits.concat(branch.node.target.history.edges))
+
+				// While not all branch has been visited
+				while(response.data.repository.refs.pageInfo.hasNextPage){
+					let cursor = response.data.repository.refs.pageInfo.endCursor
+					response = await fetchPageCommits(username, reponame, cursor, lastDate)
+					// Add newly fetched commits each branch 
+					if(!response.errors){
+						response.data.repository.refs.edges.map(
+							(branch) => 
+								fetched_commits = fetched_commits.concat(branch.node.target.history.edges))
+					}else{
+						success = false
+						break
+					}
+				}
+
+
+				// Remove duplicates & sort latest to oldest
+				if(success){
+					// Restructure commit object
+					fetched_commits = fetched_commits.map(
+						(commit) =>
+						{
+							return({
+								sha: commit.node.sha,
+								html_url: commit.node.html_url,
+								commit: {
+									author: commit.node.author,
+									committer: {
+										...commit.node.committer,
+										date: commit.node.committedDate,
+									},
+									message: commit.node.message,
+								},
+								parents: commit.node.parents.edges.map((parent) => parent.node)
+							})
+						}
+					)
+
+					fetched_commits = removeDuplicatesBy(commits => commits.sha, fetched_commits);
+					fetched_commits.sort(function(a, b) {
+						a = new Date(a.commit.committer.date);
+						b = new Date(b.commit.committer.date);
+						return a>b ? -1 : a<b ? 1 : 0;
+					});
+
+					// sliced because all beyond 50 are not connected 
+					// Add to fetched repo commits
+					repoCommits = fetched_commits.slice(1, 51)
+					break
+				}else{
+					break
+				}
+			}else{
+				success = false
+			}
+		}
+
+		// Fetching is done
+		if(success){
+			return repoCommits
+		}
+
+	}catch(err){
+		return false
+	}
+}
+
+export async function pageCommits(username, reponame, mode='ALL', fetchPoint=null, lastDate=null){
+	switch (mode) {
+		case 'ALL':
+			let commits = await pageAllCommits(username, reponame, lastDate);
+			return commits
+		default:
+			return null;
+			break;
+	}
+}
+
 export function fetchCommits(username, reponame, mode='ALL', fetchPoint=null, lastDate=null){
 	return async function (dispatch) {
 		dispatch({ type: "FETCH_COMMITS" })
@@ -346,16 +510,18 @@ export function updateCommits(commits){
 	}
 }
 
+export function updatePageCommits(commits, page){
+	return {
+		type: "UPDATE_PAGE_COMMITS",
+		payload: { commits, page }
+	}
+}
+
+
 export function addCommits(commits){
 	return {
 		type: "ADD_COMMITS",
 		payload: { commits }
-	}
-}
-
-export function fetchInitCommitDate(username, reponame){
-	return async function (dispatch){
-
 	}
 }
 
