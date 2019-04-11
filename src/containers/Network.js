@@ -1764,7 +1764,7 @@ class Network extends Component{
         this.setState({ WIDTH: width, HEIGHT: height })
 
         let zoom = this.state.zoom
-        zoom.translateExtent([[this.state.LAST_X - MARGINS.left, 0], [commitsWithX[0].x + MARGINS.right, height]])
+        zoom.translateExtent([[this.state.LAST_X - MARGINS.left, 0], [this.props.commits[0].x + MARGINS.right, height]])
         let zoomContainer = this.state.zoomContainer
 
         if(this.state.page === 0) {
