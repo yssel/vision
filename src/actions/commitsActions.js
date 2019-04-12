@@ -50,21 +50,6 @@ export async function fetchFirstCommit(user, repo){
 	}
 }
 
-async function fetchInitCommit(user, repo){
-	let link = `https://api.github.com/repos/${user}/${repo}/commits?per_page=1`
-	// fetch header 
-	let response = await authenticateRest(link)
-	let headerLink = response.headers.get('Link')
-	// Parse link to get last page
-	let lastPage = headerLink.match(/&page=(\d*)>; rel="last"/)[1]
-	// fetch init commit
-	let initCommitLink = `https://api.github.com/repos/${user}/${repo}/commits?per_page=1&page=${lastPage}`
-	let initCommitDate = await authenticateRest(initCommitLink, true)
-
-	initCommitDate = initCommitDate[0].commit.committer.date
-	return initCommitDate
-}
-
 async function fetchFrom(dispatch, user, repo, type, point){
 	let link;
 	let response;
@@ -125,22 +110,24 @@ async function fetchFrom(dispatch, user, repo, type, point){
 
 		let commits = response.commits.reverse();
 		// 1st batch is complete
-		if(response.total_commits === commits.length){
+		if( response.total_commits.length === 49 && response.total_commits === commits.length ){
 			// Add the base commit at the end to complete commits
 			commits = commits.concat(response.base_commit)
+		}else{
+			commits = commits.slice(0,50)
 		}
 		// 1st batch is INcomplete
-		else{
-			let lastDate = commits[commits.length-1].committer.date;
-			let totalCommits = response.total_commits + 1; // +1 for base commit
+		// else{
+			// let lastDate = commits[commits.length-1].committer.date;
+			// let totalCommits = response.total_commits + 1; // +1 for base commit
 			
-			while(commits.length < totalCommits){
-				link = `https://api.github.com/repos/${user}/${repo}/commits?sha=${hash}&per_page=100&&until=${lastDate}`
-				response = await authenticateRest(link, true);
-				lastDate = response[response.length - 1].commit.committer.date
-				commits = commits.concat(response.slice(1)); // don't include duplicate last commit
-			}
-		}
+			// while(commits.length < totalCommits){
+			// 	link = `https://api.github.com/repos/${user}/${repo}/commits?sha=${hash}&per_page=100&&until=${lastDate}`
+			// 	response = await authenticateRest(link, true);
+			// 	lastDate = response[response.length - 1].commit.committer.date
+			// 	commits = commits.concat(response.slice(1)); // don't include duplicate last commit
+			// }
+		// }
 
 		// Return commits
 		dispatch({ 
@@ -271,11 +258,9 @@ async function fetchPageCommits(username, reponame, branchCursor = null, untilDa
 }
 
 async function fetchAllCommits(dispatch, username, reponame, lastDate){
-	// let firstCommitDate = await fetchInitCommit(username, reponame) 
 	try {
 		// While last commit is not yet fetched
 		let success = true
-		let firstFetch = true
 		let repoCommits = []
 		while(success){
 			let fetched_commits = [] // collects fetched commits for all branches
@@ -340,20 +325,8 @@ async function fetchAllCommits(dispatch, username, reponame, lastDate){
 
 					// sliced because all beyond 50 are not connected 
 					// Add to fetched repo commits
-					if(firstFetch){
-						repoCommits = repoCommits.concat(fetched_commits.slice(0, 50))
-						firstFetch = false
-					}else{
-						repoCommits = repoCommits.concat(fetched_commits.slice(1, 49))
-					}
-					// Get last date
-					// let lastDate = repoCommits[repoCommits.length-1].commit.committer.date
-
-					// if(lastDate === firstCommitDate) {
-						// All commits fetched
-						// fetching = false
-						break
-					// }
+					repoCommits = repoCommits.concat(fetched_commits.slice(0, 50))
+					break
 				}else{
 					break
 				}
@@ -386,6 +359,54 @@ async function fetchAllCommits(dispatch, username, reponame, lastDate){
 				errors: err
 			} 
 		})
+	}
+}
+
+async function pageFrom(user, repo, type, point, lastDate){
+	let link;
+	let response;
+
+	try{
+		// Get commit HASH of point (branch/tag/commit)
+		// ------------------
+		let hash = null
+		switch(type){
+			case 'BRANCH':{
+				link = `https://api.github.com/repos/${user}/${repo}/commits?sha=${point}&per_page=1`;
+				response = await authenticateRest(link, true);
+				hash = response[0].sha
+				break;
+			}
+
+			case 'TAG': {
+				link = `https://api.github.com/repos/${user}/${repo}/git/refs/tags/${point}`;
+				response = await authenticateRest(link,true);
+				if(response.object.type === 'tag'){
+					hash = response.object.sha;
+					link = `https://api.github.com/repos/${user}/${repo}/git/tags/${hash}`;
+					response = await authenticateRest(link, true);
+					hash = response.object.sha
+				}else{
+					hash = response.object.sha
+				}
+				break;
+			}
+
+			case 'COMMIT': {
+				hash = point
+				break;
+			}
+
+			default:
+				break;
+		}
+
+		link = `https://api.github.com/repos/${user}/${repo}/commits?sha=${hash}&per_page=51&&until=${lastDate}`
+		response = await authenticateRest(link, true);
+		let commits = response.slice(1)
+		return commits
+	}catch(err){
+		return false
 	}
 }
 
@@ -471,13 +492,22 @@ async function pageAllCommits(username, reponame, lastDate){
 }
 
 export async function pageCommits(username, reponame, mode='ALL', fetchPoint=null, lastDate=null){
+	let commits
 	switch (mode) {
 		case 'ALL':
-			let commits = await pageAllCommits(username, reponame, lastDate);
+			commits = await pageAllCommits(username, reponame, lastDate);
+			return commits
+		case 'BRANCH':
+			commits = await pageFrom(username, reponame, 'BRANCH', fetchPoint, lastDate)
+			return commits
+		case 'TAG':
+			commits = await pageFrom(username, reponame, 'TAG', fetchPoint, lastDate)
+			return commits
+		case 'COMMIT':
+			commits = await pageFrom(username, reponame, 'COMMIT', fetchPoint, lastDate)
 			return commits
 		default:
 			return null;
-			break;
 	}
 }
 
@@ -514,14 +544,6 @@ export function updatePageCommits(commits, page){
 	return {
 		type: "UPDATE_PAGE_COMMITS",
 		payload: { commits, page }
-	}
-}
-
-
-export function addCommits(commits){
-	return {
-		type: "ADD_COMMITS",
-		payload: { commits }
 	}
 }
 
