@@ -26,6 +26,8 @@ class Network extends Component{
 
             page: 0,
             last_page: false,
+            loading: false,
+            orphans: [],
             LAST_X: 0,
             NEXT_X: 0,
             TRIGGER_X: null,
@@ -247,6 +249,41 @@ class Network extends Component{
                 let missingParent = commitParent ? false : true
                 if(!commitParent) commitParent = parents[parent_sha]
 
+                // Orphan found
+                if(missingParent){
+                    // Ready orphan
+                    let orphan = {
+                        sha: commit.sha,
+                        index: commit.index,
+                        x: commit.x,
+                        y: commit.y,
+                    }
+
+                    // Insert orphan (sorted)
+                    let orphans = this.state.orphans
+                    if(orphans.length){
+                        let new_orphans = []
+                        let pushed = false
+                        for(let x=0; x<orphans.length; x++){
+                            if(orphans[x].index > orphan.index){
+                                pushed = true
+                                new_orphans.push(orphan)
+                                new_orphans.push(orphans[x])
+                            }else{
+                                new_orphans.push(orphans[x])
+                            }
+                        }
+
+                        if(!pushed) new_orphans.push(orphan)
+                        orphans = new_orphans
+                    }else{
+                        orphans.push(orphan)
+                    }
+
+                    // Update orphans
+                    this.setState({ orphans })
+                }
+
                 if(commitParent){
                     if(commitParent.children){
                         let child = commitParent.children.find(x => x.sha === commit.sha)
@@ -413,7 +450,9 @@ class Network extends Component{
             // Cached parent found
             if(parents[commit.sha]){
                 // Record cached parent's children
+                let united_children = {}
                 parents[commit.sha].children.map((child) => {
+                    united_children[child.sha] = child
                     let c = this.props.commits[child.index]
                     for(let x=0; x<c.parents.length; x++){
                         if(c.parents[x].sha === commit.sha){
@@ -427,6 +466,8 @@ class Network extends Component{
                 })
                 // Delete cache
                 delete parents[commit.sha]
+                let orphans = this.state.orphans.filter((orphan) => !united_children[orphan.sha])
+                this.setState({ orphans })
             }
         }
 
@@ -646,8 +687,8 @@ class Network extends Component{
         let paths = {}
         let i
         for(i=0; i<pulls.length; i++){
-            let base = branches[pulls[i].base.ref].commit;
-            let head = branches[pulls[i].head.ref].commit
+            let base = branches[pulls[i].base.ref] ? branches[pulls[i].base.ref].commit : null;
+            let head = branches[pulls[i].head.ref] ? branches[pulls[i].head.ref].commit : null;
 
             if(base !== null && head !== null){
                 let commit = commits[base];
@@ -2107,10 +2148,12 @@ class Network extends Component{
     }
 
     loadPage = async () => {
-        if(!this.state.last_page){
+        if(!this.state.last_page && !this.state.loading){
+            this.setState({ loading: true })
             let commits = await pageCommits(this.props.username, this.props.reponame, this.props.checkout, this.props.checkout_from, this.state.last_date)
             this.setState({ page: this.state.page+1 })
             await this.drawNetwork(commits)
+            this.setState({ loading: false })
         }
     }
 
