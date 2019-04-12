@@ -30,6 +30,7 @@ class Network extends Component{
             orphans: [],
             LAST_X: 0,
             NEXT_X: 0,
+            TRAVELED_X: 0,
             TRIGGER_X: null,
             COMMITS_PER_PAGE: 50,
             parents: {},
@@ -1810,6 +1811,7 @@ class Network extends Component{
 
         if(this.state.page === 0) {
             let translateX = MAX_WIDTH < width ? MAX_WIDTH : 0;
+            this.setState({ TRAVELED_X: -translateX })
             zoom.translateBy(zoomContainer, translateX, 0)
             let initPan = d3.zoomTransform(zoomContainer.node())
             
@@ -2121,6 +2123,9 @@ class Network extends Component{
                             y = y <= 40 ? y : 40
                             y = y >= MAX_HEIGHT - width - 20 ? y : MAX_HEIGHT - width - 20
                         }
+
+                        // Monitor TRAVELED_X
+                        if(networkClass.state.TRAVELED_X > -x) networkClass.setState({ TRAVELED_X: -x })
 
                         // Transform graph
                         network.transition()
