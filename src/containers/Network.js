@@ -1,6 +1,6 @@
 import React, { Component} from 'react';
 import { connect } from 'react-redux';
-import { fetchFirstCommit, fetchCommits, fetchCommit, updateCommits, updatePageCommits, pageCommits, fetchFiles } from '../actions/commitsActions'
+import { fetchFirstCommit, fetchCommits, fetchCommit, updateCommits, updatePageCommits, pageCommits, fetchFiles, checkParent } from '../actions/commitsActions'
 import { updateBranch } from '../actions/branchesActions'
 import { updateTag } from '../actions/tagsActions'
 import { fetchIssue } from '../actions/issuesActions'
@@ -237,7 +237,6 @@ class Network extends Component{
                     })
                 }
             }
-
             // Draw parents                
             let firstParent = true
             let i
@@ -249,6 +248,7 @@ class Network extends Component{
                 commit.parents[i].index = commitParent ? commitParent.index : commitParent
                 let missingParent = commitParent ? false : true
                 if(!commitParent) commitParent = parents[parent_sha]
+                let valid_orphan = null
 
                 // Orphan found
                 if(missingParent){
@@ -260,29 +260,36 @@ class Network extends Component{
                         y: commit.y,
                     }
 
-                    // Insert orphan (sorted)
-                    let orphans = this.state.orphans
-                    if(orphans.length){
-                        let new_orphans = []
-                        let pushed = false
-                        for(let x=0; x<orphans.length; x++){
-                            if(orphans[x].index > orphan.index){
-                                pushed = true
-                                new_orphans.push(orphan)
-                                new_orphans.push(orphans[x])
-                            }else{
-                                new_orphans.push(orphans[x])
+                    // Check if orphan's parent is before it
+                    valid_orphan = await checkParent(this.props.username, this.props.reponame, commit.sha)
+                    if(valid_orphan){
+                        // Insert orphan (sorted)
+                        let orphans = this.state.orphans
+                        if(orphans.length){
+                            let new_orphans = []
+                            let pushed = false
+                            for(let x=0; x<orphans.length; x++){
+                                if(orphans[x].index === orphan.index){
+                                    pushed = true
+                                    new_orphans.push(orphans[x])
+                                }else if(orphans[x].index > orphan.index){
+                                    pushed = true
+                                    new_orphans.push(orphan)
+                                    new_orphans.push(orphans[x])
+                                }else{
+                                    new_orphans.push(orphans[x])
+                                }
                             }
+
+                            if(!pushed) new_orphans.push(orphan)
+                            orphans = new_orphans
+                        }else{
+                            orphans.push(orphan)
                         }
 
-                        if(!pushed) new_orphans.push(orphan)
-                        orphans = new_orphans
-                    }else{
-                        orphans.push(orphan)
+                        // Update orphans
+                        this.setState({ orphans })
                     }
-
-                    // Update orphans
-                    this.setState({ orphans })
                 }
 
                 if(commitParent){
@@ -336,9 +343,7 @@ class Network extends Component{
                     else if(firstParent){
                         y = commitsWithYandX[commit.index].y
                         if(!missingParent) commitsWithYandX[commitParent.index].y = y
-                        else {
-                            parents[parent_sha].y = y
-                        }
+                        else { parents[parent_sha].y = y }
                     }
                     // Other parents goes to last new row
                     else{
@@ -387,11 +392,8 @@ class Network extends Component{
                         commitsWithYandX[commitParent.index].y = y
                     }else {
                         let parent = await fetchCommit(this.props.username, this.props.reponame, parent_sha)
-                        parents[parent_sha] = {
-                            ...parents[parent_sha],
-                            y,
-                            commit: parent.commit
-                        }
+                        parents[parent_sha] = { ...parents[parent_sha], y, commit: parent.commit }
+                        if(commitParent) commitParent = { ...commitParent, y, commit: parent.commit }
                     }
 
                     // Notify new Y value to its children
@@ -457,6 +459,7 @@ class Network extends Component{
                     let c = this.props.commits[child.index]
                     for(let x=0; x<c.parents.length; x++){
                         if(c.parents[x].sha === commit.sha){
+                            // update parent's info in child
                             c.parents[x].index = commit.index
                             c.parents[x].y = commit.y
                             c.parents[x].drawn = commit.drawn
@@ -1782,6 +1785,14 @@ class Network extends Component{
         return commits[0].x - this.state.LAST_X + this.state.MARGINS.left + this.state.MARGINS.right
     }
 
+    lastDrawNetwork = async () => {
+        let MAX_WIDTH = this.state.MAX_WIDTH;
+        let MAX_HEIGHT = this.state.MAX_HEIGHT;
+        let MARGINS = this.state.MARGINS;
+
+        let canvas = d3.select('#network-graph')
+    }
+
     drawNetwork = async (fetched_commits) => {
         let MAX_WIDTH = this.state.MAX_WIDTH;
         let MAX_HEIGHT = this.state.MAX_HEIGHT;
@@ -2125,7 +2136,10 @@ class Network extends Component{
                         }
 
                         // Monitor TRAVELED_X
-                        if(networkClass.state.TRAVELED_X > -x) networkClass.setState({ TRAVELED_X: -x })
+                        if(networkClass.state.TRAVELED_X > -x) {
+                            networkClass.setState({ TRAVELED_X: -x })
+                            networkClass.loadPage()
+                        }
 
                         // Transform graph
                         network.transition()
@@ -2155,9 +2169,11 @@ class Network extends Component{
     loadPage = async () => {
         if(!this.state.last_page && !this.state.loading){
             this.setState({ loading: true })
-            let commits = await pageCommits(this.props.username, this.props.reponame, this.props.checkout, this.props.checkout_from, this.state.last_date)
-            this.setState({ page: this.state.page+1 })
-            await this.drawNetwork(commits)
+            while(!this.state.last_page && this.state.orphans.length && this.state.TRAVELED_X < this.state.orphans[0].x){
+                let commits = await pageCommits(this.props.username, this.props.reponame, this.props.checkout, this.props.checkout_from, this.state.last_date)
+                this.setState({ page: this.state.page+1 })
+                await this.drawNetwork(commits)
+            }
             this.setState({ loading: false })
         }
     }
@@ -2182,7 +2198,7 @@ class Network extends Component{
                             </div>
                             <div id='commit-text'>
                                 <div id='commit-info'>
-                                    <span id='commit-author' className='mr-5'>{commit_viewed.author ? commit_viewed.commit.author.name : commit_viewed.commit.author.user.name}</span>
+                                    <span id='commit-author' className='mr-5'>{commit_viewed.author ? commit_viewed.commit.author.name : commit_viewed.commit.author.user ? commit_viewed.commit.author.user.name : commit_viewed.commit.committer.user.name}</span>
                                     <span id='commit-username' className='mr-5'>{`@${commit_viewed.author ? commit_viewed.author.login : commit_viewed.commit.author.name.replace(/\s/g, '')}`}</span>
                                     <span id='commit-date'>{`on ${new Date(commit_viewed.commit.committer.date).toDateString()}`}</span>
                                 </div>

@@ -9,6 +9,21 @@ function removeDuplicatesBy(keyFn, array) {
   });
 }
 
+export async function checkParent(user, repo, sha){
+	let child = await fetchCommit(user, repo, sha)
+	let child_date = new Date(child.commit.committer.date)
+	let valid = true
+	for(let x=0; x<child.parents.length; x++){
+		let fetched_parent = await fetchCommit(user, repo, child.parents[x].sha)
+		if(new Date(fetched_parent.commit.committer.date) - child_date > 0){
+			valid = false
+			break;
+		}
+	}
+
+	return valid
+}
+
 async function fetchFilesReq(user, repo, sha){
 	let link = `https://api.github.com/repos/${user}/${repo}/commits/${sha}`;
 	let response = await authenticateRest(link, true);
@@ -317,6 +332,7 @@ async function fetchAllCommits(dispatch, username, reponame, lastDate){
 					)
 
 					fetched_commits = removeDuplicatesBy(commits => commits.sha, fetched_commits);
+					console.log('hiii', fetched_commits)
 					fetched_commits.sort(function(a, b) {
 						a = new Date(a.commit.committer.date);
 						b = new Date(b.commit.committer.date);
