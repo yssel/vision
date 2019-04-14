@@ -44,6 +44,32 @@
 	font-family: 'Source Sans Pro';
 	font-weight: 500;
 	font-size: 12px;
+	display: flex;
+	flex-direction: column;
+}
+
+#commit-info{
+	display: flex;
+	flex-direction: row;
+}
+
+#commit-sha{
+	padding-right: 10px;
+	flex-grow: 1;
+	text-align: right;
+	font-size: 10px;
+	font-family: 'Roboto Slab';
+	color: gray;
+}
+
+#commit-sha a{
+	font-weight: 600;
+	color: var(--color-2);
+	text-decoration: none;
+}
+
+#commit-sha a:hover{
+	border-bottom: 1px solid var(--color-2);
 }
 
 #commit-author{
@@ -62,6 +88,12 @@
 
 #commit-message{
 	font-weight: 600;
+	flex-grow: 1;
+	overflow-y: auto;
+	text-overflow: ellipsis;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+	hyphens: auto;
 }
 
 #files-changed{
@@ -79,19 +111,19 @@
 
 #files-changed .header{
 	display: grid;
-	grid-template-columns: 55% auto calc(20px + 20%);
-	grid-gap: 5px;
-	font-family: 'Quicksand';
-	font-size: 12px;
+	grid-template-columns: 55% auto 20%;
+	grid-gap: 10px;
+	font-family: 'Muli';
+	font-size: 11px;
 	font-weight: 600;
-	text-transform: uppercase;
-	/*letter-spacing: 0.5px;*/
+	/*text-transform: uppercase;*/
 	padding: 10px;
-	text-align: center;
+	padding-right: 18px;
+	text-align: left;
 }
 
-#files-changed .header .first{
-	text-align: left;
+#files-changed .header .last{
+	text-align: center;
 }
 
 #files-changed-list{
@@ -119,7 +151,7 @@
 
 .file{
 	display: grid;
-	grid-template-columns: 55% auto 20px 10% 10%;
+	grid-template-columns: 55% auto 20%;
 	grid-gap: 5px;
 	background: white;
 	border-radius: 2px;
@@ -136,15 +168,17 @@
 	overflow-wrap: break-word;
 	word-wrap: break-word;
 	hyphens: auto;
-	font-size: 10px;
+	font-size: 11px;
 	font-family: 'Roboto Slab';
 	padding: 10px;
+	font-weight: 500;
+	letter-spacing: 0.2px;
 	/*padding-bottom: 5px;*/
 }
 
 .file .status{
-	display: grid;
-	justify-content: center;
+	display: flex;
+	flex-direction: row;
 	align-items: center;
 }
 
@@ -174,25 +208,54 @@
 	border-radius: 15px;
 }
 
-.additions, .deletions{
-	padding-top: 5px;
-	text-align: right;
+.change-bars{
+	position: relative;
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
 }
 
-.deletions{
-	text-align: left;
+.change-bars:hover .tooltip{
+	opacity: 1;
 }
+
+.tooltip{
+	position: absolute;
+	font-family: 'Muli';
+	background: var(--color-dg);
+	color: white;
+	padding: 5px;
+	border-radius: 5px;
+	font-size: 10px;
+	min-width: 100px;
+	left: -110px;
+	opacity: 0;
+	transition: opacity 0.3s;
+}
+
+.filler{
+	width: 4px;
+	height: 4px;
+	margin-right: 2px;
+	background: lightgray;
+	display: inline-block;
+	border-radius: 50%;
+}
+
 .addition{
-	width: 5px;
-	height: 5px;
-	margin-left: 2px;
+	width: 4px;
+	height: 4px;
+	margin-right: 2px;
 	background: green;
 	display: inline-block;
+	border-radius: 50%;
 }
 
 .deletion{
-	width: 5px;
-	height: 5px;
+	border-radius: 50%;
+	width: 4px;
+	height: 4px;
 	display: inline-block;
 	margin-right: 2px;
 	background: red;
@@ -308,17 +371,24 @@
 }
 
 .issue-number{
-	text-decoration: none;
-	position: absolute;
+	margin-left: 10px;
 	font-size: 14px;
 }
+
+.issue-number:hover{
+	border-bottom: 1px solid var(--color-2);
+}
+
 .issue-number a{
+	font-family: 'Roboto Slab';
+	font-weight: 400;
 	text-decoration: none;
-	color: gray;
+	color: var(--color-2);
 	outline: none;
 }
 
 .issue-title{
+	font-family: 'Muli';
 	font-size: 14px;
 	font-weight: 600;
 	margin-bottom: 15px;

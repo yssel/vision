@@ -47,6 +47,7 @@ export function fetchTags(username, reponame){
 					response.data.repository.refs.edges.map(
 						(edge) => {
 							tags[edge.node.name] = edge.node.target
+							return true
 						});
 
 					// Check next page

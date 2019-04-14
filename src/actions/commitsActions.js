@@ -293,9 +293,8 @@ async function fetchAllCommits(dispatch, username, reponame, lastDate){
 					response = await fetchRepoCommits(username, reponame, cursor, lastDate)
 					//Add newly fetched commits each branch 
 					if(!response.errors){
-						response.data.repository.refs.edges.map(
-							(branch) => 
-								fetched_commits = fetched_commits.concat(branch.node.target.history.edges))
+						// eslint-disable-next-line
+						response.data.repository.refs.edges.map((branch) => fetched_commits = fetched_commits.concat(branch.node.target.history.edges))
 					}else{
 						// An error has occured
 						dispatch({ 
@@ -446,9 +445,8 @@ async function pageAllCommits(username, reponame, lastDate){
 					response = await fetchPageCommits(username, reponame, cursor, lastDate)
 					// Add newly fetched commits each branch 
 					if(!response.errors){
-						response.data.repository.refs.edges.map(
-							(branch) => 
-								fetched_commits = fetched_commits.concat(branch.node.target.history.edges))
+						// eslint-disable-next-line
+						response.data.repository.refs.edges.map((branch) => fetched_commits = fetched_commits.concat(branch.node.target.history.edges))
 					}else{
 						success = false
 						break

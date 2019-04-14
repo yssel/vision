@@ -115,6 +115,7 @@ export default class SearchBox extends Component {
       <div id={id} style={{ width, position: 'relative' }}>
         <div className='input'>
           <input 
+            spellCheck={false}
             value = {this.state.value}
             type='text'
             onFocus={this.handleFocus}
@@ -133,7 +134,7 @@ export default class SearchBox extends Component {
             <div className='placeholder' style={{ paddingTop: 10}}>
               <SearchResult
                 key={0}
-                value={{ id: 0, type: 'ALL', name: 'All' }}
+                value={{ id: 0, type: 'ALL', name: 'All branches' }}
                 onResultSelect={this.handleResultSelect} 
               />
 

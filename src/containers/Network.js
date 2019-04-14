@@ -14,10 +14,10 @@ import '../styles/commitBox.css';
 class Network extends Component{
     constructor(props){
         super(props);
-        let timeline_font = '700 9px Raleway'
+        let timeline_font = '700 10px Raleway'
         let font_family = 'Roboto Slab'
-        let font_size = 10
-        let font = `400 ${font_size}px ${font_family}`
+        let font_size = 11
+        let font = `500 ${font_size}px ${font_family}`
         // Initialize constants
         this.state = {
             timeline_font,
@@ -48,7 +48,7 @@ class Network extends Component{
             NODE_RADIUS: 4,
             INTERVAL_X: 20,
             INTERVAL_Y: 30,
-            MASTER_Y: 20,
+            MASTER_Y: this.props.checkout === 'ALL' ? 40 : 10,
             panning: false,
             paths: null,
             issues_viewed: [],
@@ -94,6 +94,34 @@ class Network extends Component{
                 return 'Dec'
             default:
                 break;
+        }
+    }
+
+    dateInWords = (date) => {
+        let options = { year: 'numeric', month: 'long', day: 'numeric' };
+        date = new Date(date)
+        return date.toLocaleString('en-US', options)
+    }
+
+    dateInHuman = (orig_date) => {
+        let date = new Date(orig_date)
+        let today = new Date()
+
+        if(date.getFullYear() < today.getFullYear()){
+            let diff = today.getFullYear() - date.getFullYear()
+            return `${diff > 1 ? diff : 'a'} year${diff > 1 ? 's' : ''} ago`
+        }else if(date.getFullYear() > today.getFullYear()){
+            return this.dateInWords(orig_date)
+        }else if(date.getMonth() < today.getMonth()){
+            let diff = today.getMonth() - date.getMonth()
+            return `${diff > 1 ? diff : 'a'} month${diff > 1 ? 's' : ''} ago`
+        }else if(date.getMonth() > today.getMonth()){
+            return this.dateInWords(orig_date)
+        }else if(date.getDate() < today.getMonth()){
+            let diff = today.getDate() - date.getDate()
+            return `${diff > 1 ? diff : 'a'} day${diff > 1 ? 's' : ''} ago`
+        }else{
+            return this.dateInWords(orig_date)
         }
     }
 
@@ -204,7 +232,7 @@ class Network extends Component{
             // Check if the commit is NOT YET drawn,
             if(!commitsWithYandX[commit.index].drawn){
                 // check if commit is master/DEFAULT branch
-                if(this.props.master_sha === commit.sha){
+                if(this.props.checkout === 'ALL' && this.props.master_sha === commit.sha){
                     commitsWithYandX[commit.index].y = this.state.MASTER_Y
                     y = this.state.MASTER_Y
                 }else{
@@ -334,7 +362,7 @@ class Network extends Component{
                     }
 
                     // Master special case
-                    if(this.props.master_sha === parent_sha){
+                    if(this.props.checkout === 'ALL' && this.props.master_sha === parent_sha){
                         y = this.state.MASTER_Y
                         if(!missingParent) commitsWithYandX[commitParent.index].y = y
                         else parents[parent_sha].y = y
@@ -467,6 +495,7 @@ class Network extends Component{
                         }
                     }
                     draw_paths.push(c)
+                    return true
                 })
                 // Delete cache
                 delete parents[commit.sha]
@@ -693,11 +722,11 @@ class Network extends Component{
         for(i=0; i<pulls.length; i++){
             let base = branches[pulls[i].base.ref] ? branches[pulls[i].base.ref].commit : null;
             let head = branches[pulls[i].head.ref] ? branches[pulls[i].head.ref].commit : null;
-
-            if(base !== null && head !== null){
+            if(!base || !head || !commits[base] || !commits[head] ){
+                undrawn.push(pulls[i])
+            }else{
                 let commit = commits[base];
                 let parent = commits[head];
-
                 let color = commit.y
 
                 if(commit.x < parent.x) {
@@ -1047,8 +1076,6 @@ class Network extends Component{
 
                     }
                 }
-            }else{
-                undrawn.push(pulls[i])
             }
         }
 
@@ -1637,9 +1664,6 @@ class Network extends Component{
             return a>b ? -1 : a<b ? 1 : 0;
         });
 
-        let bboxStr = ''
-        let count = branches.length + tags.length
-
         let branches_length = branches.length
         let tags_length = tags.length
 
@@ -1647,8 +1671,6 @@ class Network extends Component{
         let string = '' // collects duplicated names
 
         branches.map((branch, i) => {
-            bboxStr += branch[0]
-
             if(index === null){
                 // Next branch is also pointing to same commit
                 if(i < branches_length-1 && branches[i+1][1].sha === branch[1].sha){
@@ -1658,8 +1680,6 @@ class Network extends Component{
             }else{
                 // Record branch name
                 string += ', ' + branch[0]
-                bboxStr += ', '
-                count--
 
                 branch[1].dup = true
                 if(i === branches_length-1 || branches[i+1][1].sha !== branch[1].sha){
@@ -1677,8 +1697,6 @@ class Network extends Component{
         string = ''
 
         tags.map((tag, i) => {
-            bboxStr += tag[0]
-
             if(index === null){
                 // Next branch is also pointing to same commit
                 if(i < tags_length-1 && tags[i+1][1].sha === tags[1].sha){
@@ -1688,8 +1706,6 @@ class Network extends Component{
             }else{
                 // Record branch name
                 string += ', ' + tag[0]
-                bboxStr += ', '
-                count--
 
                 tag[1].dup = true
                 if(i === tags_length-1 || tags[i+1][1].sha !== tag[1].sha){
@@ -1718,7 +1734,7 @@ class Network extends Component{
         // Create color scale
         let colorScale = d3.scaleOrdinal()
             .domain([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-            .range(['#1d1919', '#660066', '#df0054', '#ff8b6a', '#01676b', '#21aa93', '#ffc15e', '#183661', '#87c0cd', '#ff5d9e'])
+            .range(['#facf5a', '#660066', '#df0054', '#ff8b6a', '#01676b', '#21aa93', '#ffc15e', '#183661', '#87c0cd', '#ff5d9e'])
         this.setState({ colorScale })
 
         // Set up canvas
@@ -1750,6 +1766,7 @@ class Network extends Component{
         zoomContainer.call(zoom)
         this.setState({ zoom, zoomContainer })
 
+
         // Timeline
         canvas.append('g')
             .attr('id', 'timeline')
@@ -1757,6 +1774,16 @@ class Network extends Component{
         // Network Graph
         let networkGraph = canvas.append('g')
             .attr('id', 'network-graph-group')
+        // Indicater of incomplete portion
+        networkGraph.append('g')
+            .append('rect')
+            .attr('id', 'incomplete')
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('rx', 10)
+            .attr('ry', 10)
+            .attr('width', 0)
+            .attr('height', 0)
 
         networkGraph.append('g')
             .attr('id', 'cached-connections')
@@ -1783,14 +1810,6 @@ class Network extends Component{
     getWidth = () => {
         let commits = this.props.commits
         return commits[0].x - this.state.LAST_X + this.state.MARGINS.left + this.state.MARGINS.right
-    }
-
-    lastDrawNetwork = async () => {
-        let MAX_WIDTH = this.state.MAX_WIDTH;
-        let MAX_HEIGHT = this.state.MAX_HEIGHT;
-        let MARGINS = this.state.MARGINS;
-
-        let canvas = d3.select('#network-graph')
     }
 
     drawNetwork = async (fetched_commits) => {
@@ -1924,7 +1943,7 @@ class Network extends Component{
                         .attr('data-color', (d) => d.color)
                         .attr('class','connection')
                         .style('fill', 'transparent')
-                        .style('stroke', (d) => colorScale(d.color))
+                        .style('stroke', (d) => Number(d.color) === networkClass.state.MASTER_Y ? 'black' : colorScale(d.color))
                         .attr('d', (d) => 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy)
         }
 
@@ -1944,7 +1963,7 @@ class Network extends Component{
                     .attr('data-color', (d) => d.color)
                     .attr('class','connection')
                     .style('fill', 'transparent')
-                    .style('stroke', (d) => colorScale(d.color))
+                    .style('stroke', (d) => Number(d.color) === networkClass.state.MASTER_Y ? 'black' : colorScale(d.color))
                     .attr('d', (d) => 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy)
 
         // PULL REQUESTS PATHS
@@ -1963,7 +1982,7 @@ class Network extends Component{
                     .attr('class','pull-req')
                     .style('fill', 'transparent')
                     .style('stroke-linecap', 'round')
-                    .style('stroke', (d) => colorScale(d.color))
+                    .style('stroke', (d) => Number(d.color) === networkClass.state.MASTER_Y ? 'black' : colorScale(d.color))
                     .attr('d', (d) => 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy)
         
         // COMMIT NODES
@@ -1977,7 +1996,7 @@ class Network extends Component{
                 .attr('cx', (d) => (Number(d.x)))
                 .attr('cy', (d) => d.y)
                 .attr('r', networkClass.state.NODE_RADIUS)
-                .attr('stroke', (d) => colorScale(d.y))
+                .attr('stroke', (d) => d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y))
                 // .style('filter', (d) => 'drop-shadow( 0px 0px 5px ' + colorScale(d.y) + ')' )
             .on('mouseover', function(d){
                 networkClass.setState({ commit_viewed: d })
@@ -2008,7 +2027,7 @@ class Network extends Component{
                 .append('text')
                 .attr('fill', (d) => {
                     // return colorScale(d.y)
-                    return networkClass.getTextColor(colorScale(d.y), true)
+                    return networkClass.getTextColor(d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y), true)
                 })
                 .attr('text-anchor', 'end')
                 .style('font', networkClass.state.branch_font)
@@ -2024,7 +2043,7 @@ class Network extends Component{
                 // .attr('fill', 'white')
                 // .style('stroke-width', '1px')
                 // .style('stroke', (d) => colorScale(d.y))
-                .attr('fill', (d) => colorScale(d.y))
+                .attr('fill', (d) => d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y))
                 .attr('rx', 3)
                 .attr('ry', 3)
                 .attr('x', (d) => d.x - d.width - 20)
@@ -2036,7 +2055,7 @@ class Network extends Component{
             .data(canvas_branches)
             .enter()
             .append('path')
-                    .style('fill', (d) => colorScale(d.y))
+                    .style('fill', (d) => d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y))
                     .attr('d', (d) => `M${d.x-networkClass.state.NODE_RADIUS} ${d.y} L${d.x - 11} ${d.y - (d.height * 0.25)} L${d.x - 11} ${d.y + (d.height * 0.25)} Z`)
 
         // Draw branch ui pointers
@@ -2056,7 +2075,7 @@ class Network extends Component{
             .data(canvas_tags)
             .enter()
                 .append('text')
-                .attr('fill', (d) => colorScale(d.y))
+                .attr('fill', (d) => d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y))
                 // .attr('fill', (d) => networkClass.getTextColor(colorScale(d.y), true))
                 .attr('text-anchor', 'end')
                 .style('font', networkClass.state.branch_font)
@@ -2071,7 +2090,7 @@ class Network extends Component{
                 .append('rect')
                 .attr('fill', 'white')
                 .style('stroke-width', '1px')
-                .style('stroke', (d) => colorScale(d.y))
+                .style('stroke', (d) => d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y))
                 // .attr('fill', (d) => colorScale(d.y))
                 .attr('rx', 3)
                 .attr('ry', 3)
@@ -2084,7 +2103,7 @@ class Network extends Component{
             .data(canvas_tags)
             .enter()
             .append('path')
-                    .style('fill', (d) => colorScale(d.y))
+                    .style('fill', (d) => d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y))
                     .attr('d', (d) => `M${d.x-networkClass.state.NODE_RADIUS} ${d.y} L${d.x - 10} ${d.y - (d.height * 0.25)} L${d.x - 10} ${d.y + (d.height * 0.25)} Z`)
 
 
@@ -2170,11 +2189,14 @@ class Network extends Component{
         if(!this.state.last_page && !this.state.loading){
             this.setState({ loading: true })
             while(!this.state.last_page && this.state.orphans.length && this.state.TRAVELED_X < this.state.orphans[0].x){
+                let incomplete_width = this.state.orphans[0].x-this.state.LAST_X + 40
+                d3.select('#incomplete').transition().attr('x', this.state.orphans[0].x+20 - incomplete_width).attr('width', incomplete_width).attr('height', this.getHeight()+40)
                 let commits = await pageCommits(this.props.username, this.props.reponame, this.props.checkout, this.props.checkout_from, this.state.last_date)
                 this.setState({ page: this.state.page+1 })
                 await this.drawNetwork(commits)
             }
             this.setState({ loading: false })
+            d3.select('#incomplete').transition().attr('x', this.state.LAST_X).attr('width', 0)
         }
     }
 
@@ -2188,6 +2210,7 @@ class Network extends Component{
         return(
             <div id='network-tab'>
                 <div id='network-graph-wrapper'>
+                    <div id='graph-loader' style={{opacity: this.state.loading ? 1 : 0 }}><i className="fas fa-circle-notch fa-spin"></i></div>
                     <svg id='network-graph'></svg>  
                 </div>
                 <div id='commit-box'>
@@ -2198,13 +2221,17 @@ class Network extends Component{
                             </div>
                             <div id='commit-text'>
                                 <div id='commit-info'>
-                                    <span id='commit-author' className='mr-5'>{commit_viewed.author ? commit_viewed.commit.author.name : commit_viewed.commit.author.user ? commit_viewed.commit.author.user.name : commit_viewed.commit.committer.user.name}</span>
-                                    <span id='commit-username' className='mr-5'>{`@${commit_viewed.author ? commit_viewed.author.login : commit_viewed.commit.author.name.replace(/\s/g, '')}`}</span>
-                                    <span id='commit-date'>{`on ${new Date(commit_viewed.commit.committer.date).toDateString()}`}</span>
+                                    <div>
+                                    <span id='commit-author' className='mr-5'>{commit_viewed.author ? commit_viewed.commit.author.name : commit_viewed.commit.author ? commit_viewed.commit.author.user.name : commit_viewed.commit.committer.user.name}</span>
+                                    <span id='commit-username' className='mr-5'>{`@${commit_viewed.author ? commit_viewed.author.login : commit_viewed.commit.author ? commit_viewed.commit.author.name.replace(/\s/g, '') : commit_viewed.commit.committer.name.replace(/\s/g, '')}`}</span>
+                                    <span id='commit-date'>{this.dateInWords(commit_viewed.commit.committer.date)}</span>
+                                    </div>
+                                    <div id='commit-sha'>
+                                        sha: <a href={commit_viewed.html_url}>{commit_viewed.sha.slice(0,10)}</a>
+                                    </div>
                                 </div>
                                 <div id='commit-message'>
                                     {commit_viewed.commit.message}
-                                    {commit_viewed.sha}
                                 </div>
                             </div>
                         </div>
@@ -2212,9 +2239,9 @@ class Network extends Component{
                     {files_viewed &&
                         <div id='files-changed'>
                             <div className='header'>
-                                <span className='first'>Files Changed</span>
+                                <span>Files Changed</span>
                                 <span>Status</span>
-                                <span>Changes</span>
+                                <span className='last'>Changes</span>
                             </div>
                             <div id='files-changed-list'>
                                 <div className='block'>
@@ -2236,27 +2263,40 @@ class Network extends Component{
 
                                     }
 
-                                    let additions = Math.floor(file.additions/file.changes*5)
-                                    let deletions = Math.floor(file.deletions/file.changes*5)
-                                    additions = isNaN(additions) ? 0 : additions
-                                    deletions = isNaN(deletions) ? 0 : deletions
+                                    let additions = 0
+                                    let deletions = 0
+                                    let fillers = 0
+                                    if(file.changes > 10){
+                                        additions = Math.floor(file.additions/file.changes*10)
+                                        deletions = Math.floor(file.deletions/file.changes*10)
+                                        additions = isNaN(additions) ? 0 : additions
+                                        deletions = isNaN(deletions) ? 0 : deletions
+                                    }else{
+                                        additions = file.additions
+                                        deletions = file.deletions
+                                        fillers = 10 - additions - deletions
+                                    }
+
                                     return(
                                         <div key={i} className={i > 0 ? 'file' : 'file first'}>
                                             <div className='filename'>{file.filename}</div>
                                             <div className='status'>
+                                                <div className='changes'><div>{file.changes}</div></div>
                                                 <div style={{ color: color }}>{file.status}</div>
                                             </div>
-                                            <div className='changes'><div>{file.changes}</div></div>
-                                            <div className='additions'>
-                                            {additions > 0 && Array(additions).fill().map((x, i) =>{
+                                            <div className='change-bars'>
+                                                <span className='tooltip'>{file.additions} additions, {file.deletions} deletions</span>
+                                                {additions > 0 && Array(additions).fill().map((x, i) =>{
                                                 return(
                                                     <div key={i} className='addition'></div>
                                                 )})}
-                                            </div>
-                                            <div className='deletions'>
-                                            {deletions > 0 && Array(deletions).fill().map((x,i) =>{
+                                                {deletions > 0 && Array(deletions).fill().map((x,i) =>{
                                                 return(
                                                     <div key={i} className='deletion'></div>
+                                                )})}
+                                                {fillers > 0 && Array(fillers).fill().map((x,i) =>{
+                                                return(
+                                                    <div key={i} className='filler'></div>
                                                 )})}
                                             </div>
                                         </div>
@@ -2277,7 +2317,7 @@ class Network extends Component{
                                 <div key={i} className={i > 0 ? 'issue' : 'issue first'}>
                                     <div className='issue-info'>
                                         <div className='issue-data'>
-                                            <div className='issue-title'>{issue.title}</div>
+                                            <div className='issue-title'>{issue.title}<span className='issue-number'><a href={issue.html_url}>#{issue.number}</a></span></div>
                                             {issue.milestone && 
                                                 <div className='issue-milestone'>
                                                     <i className='fas fa-flag'></i>
@@ -2327,7 +2367,7 @@ class Network extends Component{
                                 <div key={i} className='issue'>
                                     <div className='issue-info'>
                                         <div className='issue-data'>
-                                            <div className='issue-title'>{issue.title}</div>
+                                            <div className='issue-title'>{issue.title}<span className='issue-number'><a href={issue.html_url}>#{issue.number}</a></span></div>
                                             {issue.milestone && 
                                                 <div className='issue-milestone'>
                                                     <i className='fas fa-flag'></i>

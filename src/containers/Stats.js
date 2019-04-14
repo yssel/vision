@@ -48,6 +48,34 @@ class Stats extends Component{
 		this.getData(this.props)
 	}
 
+	dateInWords = (date) => {
+        let options = { year: 'numeric', month: 'long', day: 'numeric' };
+        date = new Date(date)
+        return date.toLocaleString('en-US', options)
+    }
+
+    dateInHuman = (orig_date) => {
+        let date = new Date(orig_date)
+        let today = new Date()
+
+        if(date.getFullYear() < today.getFullYear()){
+            let diff = today.getFullYear() - date.getFullYear()
+            return `${diff > 1 ? diff : 'a'} year${diff > 1 ? 's' : ''} ago`
+        }else if(date.getFullYear() > today.getFullYear()){
+            return this.dateInWords(orig_date)
+        }else if(date.getMonth() < today.getMonth()){
+            let diff = today.getMonth() - date.getMonth()
+            return `${diff > 1 ? diff : 'a'} month${diff > 1 ? 's' : ''} ago`
+        }else if(date.getMonth() > today.getMonth()){
+            return this.dateInWords(orig_date)
+        }else if(date.getDate() < today.getMonth()){
+            let diff = today.getDate() - date.getDate()
+            return `${diff > 1 ? diff : 'a'} day${diff > 1 ? 's' : ''} ago`
+        }else{
+            return this.dateInWords(orig_date)
+        }
+    }
+
 	drawGraphs = () => {
 		const { 
 			labels,
@@ -71,6 +99,7 @@ class Stats extends Component{
     			d3.select(`.milestone.n-${m.number} .donut`),
     			[{ n: m.closed_issues, color: '#1cb3c8'}, {n: m.open_issues, color: 'transparent'}]
     		)
+    		return true
     	})
 	}
 
@@ -311,7 +340,9 @@ class Stats extends Component{
     			keys.map((k, i) => {
     				[0, 1].map((n) =>{
     					data[n][k] = data[n].days[i]
+    					return true
     				})
+    				return true
     			})
 		    	break;
 		    case 1: 
@@ -331,7 +362,9 @@ class Stats extends Component{
 		    	keys.map((k, i) => {
     				[0, 1, 2, 3].map((n) =>{
     					data[n][k] = data[n].days[i]
+    					return true
     				})
+    				return true
     			})
     			console.log(data)
 		    	break;
@@ -595,14 +628,26 @@ class Stats extends Component{
 						<div className='graph' id='milestones-list'>
 							<div className='block'>
 							{ milestones.map((m,i) => {
+								let milestones_percent = (m.closed_issues)/(m.open_issues+m.closed_issues)
+    							milestones_percent = isNaN(milestones_percent) ? 0 : Math.round(milestones_percent * 100);
+								
 								return(
 								<div key={i} className={`milestone n-${m.number}`}>
 									<div className='details'>
 										<div className='milestone-title'>{m.title}</div>
 										<div className='date'>
-											<span>{m.updated_at === m.created_at ? 'Created at ' : 'Updated at '}</span>
-											<span>{m.updated_at}</span>
+											<span>{m.updated_at === m.created_at ? 'Created ' : 'Updated '}</span>
+											<span>{this.dateInHuman(m.updated_at)}</span>
 										</div>
+										{m.due_on && 
+											<div className='due date'>
+												<span>Due </span>
+												<span>{this.dateInHuman(m.updated_at)}</span>
+											</div>
+										}
+									</div>
+									<div className='progress'>
+										{milestones_percent}%
 									</div>
 									<div className='donut'>
 									</div>

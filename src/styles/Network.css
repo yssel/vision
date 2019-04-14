@@ -15,6 +15,22 @@
 	background: white;
 	display: table-cell;
 	vertical-align: middle;
+	position: relative;
+}
+
+#graph-loader{
+	opacity: 0;
+	border-radius: 50%;
+	box-shadow: var(--box-shadow);
+	position: absolute;
+	background: var(--color-3);
+	top: 15px;
+	left: calc(50% - 15px);
+	padding: 7px;
+	padding-bottom: 6px;
+	font-size: 18px;
+	color: var(--color-dg);
+	transition: opacity 1s;
 }
 
 #network-graph{
@@ -27,6 +43,10 @@
 }
 
 /* Canvas Elements */
+
+#incomplete{
+	fill: var(--color-3);
+}
 
 .commit-node{
 	stroke-width: 3.5px;

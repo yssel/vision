@@ -20,7 +20,7 @@ class Main extends Component {
 		const { username, reponame } = params;
 		this.state = {
 			checkout: 'ALL',
-            checkout_from: 'All',
+            checkout_from: 'All branches',
 		}
 
 		this.fetchRepoData = this.fetchRepoData.bind(this)
@@ -28,9 +28,10 @@ class Main extends Component {
 	}
 
 	setSearchDatabase = () => {
-		let database = [{id: 0, type: 'ALL', name: 'All'}, {id: 1, type: 'BRANCH', name: this.props.master_name}]
+		let database = [{id: 0, type: 'ALL', name: 'All branches'}]
 		database = database.concat(Object.keys(this.props.branches).map((branch, i) => { 
-			return {id: i+2, type: 'BRANCH', name: branch} 
+			if(branch === this.props.master_name) return {id: 1, type: 'BRANCH', name: this.props.master_name}
+			else return {id: i+2, type: 'BRANCH', name: branch} 
 		}))
 		const length = database.length
 		database = database.concat(Object.keys(this.props.tags).map((tag, i) => { return {id: length+2+i, type: 'TAG', name: tag} }))
@@ -79,12 +80,6 @@ class Main extends Component {
 						<div><i className='fas fa-users'></i></div>
 					</NavLink>
 					</div>
-
-					{/*<div className='nav-tab'>
-					<NavLink to={`/${this.props.username}/${this.props.reponame}/activity`} exact> 
-						<div><i className='fas fa-bullseye'></i></div>
-					</NavLink>
-					</div>*/}
 					
 					</div>
 					<div id='logout' >
@@ -99,17 +94,17 @@ class Main extends Component {
 				</div>
 				<div id='page'>
 					<div id='bar'>
-						<div id='repo-user'>
-							<span id='username' className='c-4 fs-12'>
-								<i className='fab fa-github mr-5 c-dg'></i>
-								{`${this.props.username}/`}
-							</span>
-							<span id='reponame' className='c-white bold fs-14'>{this.props.reponame}</span>
-						</div>
+							<div id='repo-user'>
+								<span id='username' className='c-4 fs-12'>
+									<i className='fab fa-github mr-5 c-dg'></i>
+									{`${this.props.username}/`}
+								</span>
+								<span id='reponame' className='c-white bold fs-14'>{this.props.reponame}</span>
+							</div>
 						<Switch>
 							<Route exact path='/:username/:reponame'>
 								<div id='search'>
-								<div style={{paddingRight: 8, fontSize: 12, color: 'white'}}>Graph : </div>
+								<div style={{fontFamily: 'Roboto Slab', paddingRight: 8, fontSize: 11, letterSpacing: 0.3, color: 'var(--color-4)'}}>Graph</div>
 								<SearchBox 
 									id='search-box'
 									database={this.state.database}
@@ -118,6 +113,19 @@ class Main extends Component {
 									initValue={this.state.checkout_from}
 									master_name={this.props.master_name}
 								/>
+								</div>
+							</Route>
+						</Switch>
+						<Switch>
+							<Route exact path='/:username/:reponame'>
+								<div id='legends'>
+									<span style={{ color: 'var(--color-2)' }} className='mr-15'>Legends: </span>
+									<span className='mr-5'><i style={{ fontSize: 14, color: 'var(--color-4)' }} className="far fa-circle"></i></span>
+									<span className='mr-15'>Commit</span>
+									<span className='mr-5'><i style={{ color: 'var(--color-4)' }} className="fas fa-tag"></i></span>
+									<span className='mr-15'>Branch</span>
+									<span className='mr-5'><i className="fas fa-tag"></i></span>
+									<span>Tag</span>
 								</div>
 							</Route>
 						</Switch>

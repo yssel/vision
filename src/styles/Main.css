@@ -54,13 +54,14 @@
 #bar i{ color: white; }
 
 #bar{
-	padding-left: 5%;
-	padding-right: 5%;
-	width: 95vw;
+	padding-left: 5vw;
+	padding-right: 5vw;
+	width: 85vw;
 	height: var(--bar-height);
 	background: var(--color-1);
-	display: table-cell;
-	vertical-align: middle;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
 	font-family: 'Josefin Sans';
 }
 
@@ -75,6 +76,14 @@
 	margin-right: 2px;
 	color: var(--color-4);
 }	
+
+#legends{
+	flex-grow: 1;
+	text-align: right;
+	font-family: 'Roboto Slab';
+	color: lightgray;
+	font-size: 11px;
+}
 
 #page{
 	left: var(--sidenav-width);

@@ -169,13 +169,22 @@
 
 .milestone{
 	display: grid;
-	grid-template-columns: auto 25%;
+	grid-template-columns: auto 50px 50px;
 	border-radius: 4px;
 	border: 0.5px solid rgba(202,202,202,0.5);
 	margin-bottom: 5px;
 	background: white;
 	font-family: 'Quicksand';
 	font-size: 15px;
+}
+
+.milestone .progress{
+	font-family: 'Roboto Slab';
+	font-size: 14px;
+	color: var(--color-4);
+	display: grid;
+	justify-content: right;
+	align-items: center;
 }
 
 .milestone .donut{
@@ -191,7 +200,13 @@
 }
 
 .milestone .date{
-	font-family: 'Source Sans Pro';
+	font-family: 'Muli';
 	font-size: 10px;
 	font-weight: 500;
+	color: var(--color-1);
+}
+
+.milestone .due.date{
+	color: var(--color-1);
+	font-weight: 600;
 }

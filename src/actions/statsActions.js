@@ -21,6 +21,7 @@ export function sortByDay(fetched, type, last=false){
 			let day = Math.round((date-sunday)/(1000*60*60*24))
 			data[day].push(d)
 		}
+		return true
 	})
 
 	return data

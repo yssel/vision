@@ -46,6 +46,7 @@ export function fetchBranches(username, reponame){
 					response.data.repository.refs.edges.map(
 						(edge) => {
 							branches[edge.node.name] = edge.node.target
+							return true
 						});
 
 					// Check next page
