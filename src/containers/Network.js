@@ -1,5 +1,6 @@
 import React, { Component} from 'react';
 import { connect } from 'react-redux';
+import { Redirect } from 'react-router-dom';
 import { fetchFirstCommit, fetchCommits, fetchCommit, updateCommits, updatePageCommits, pageCommits, fetchFiles, checkParent } from '../actions/commitsActions'
 import { updateBranch } from '../actions/branchesActions'
 import { updateTag } from '../actions/tagsActions'
@@ -32,7 +33,6 @@ class Network extends Component{
             NEXT_X: 0,
             TRAVELED_X: 0,
             TRIGGER_X: null,
-            COMMITS_PER_PAGE: 50,
             parents: {},
             draw_paths: [],
             draw_branches: null,
@@ -97,6 +97,24 @@ class Network extends Component{
         }
     }
 
+    checkSession = () => {
+        if(!localStorage.getItem('repo')){
+            if(!localStorage.getItem('vt')){
+                this.setState({
+                    toAuth: true,
+                    toMain: false,
+                    toLogin: false
+                })
+            }else{
+                this.setState({
+                    toAuth: false,
+                    toMain: false,
+                    toLogin: true
+                })
+            }
+        }
+    }
+
     dateInWords = (date) => {
         let options = { year: 'numeric', month: 'long', day: 'numeric' };
         date = new Date(date)
@@ -125,21 +143,27 @@ class Network extends Component{
         }
     }
 
+    setClicked = () => {
+        let padding = this.state.INTERVAL_X * 0.75
+        d3.select('#clicked').transition().attr('x', this.state.commit_viewed.x-padding).attr('width', padding*2)
+    }
+
     init = async (props) =>{
         let firstCommit = await fetchFirstCommit(props.username, props.reponame)
-        await this.setState({ firstCommit: firstCommit[0] })
+        await this.setState({ firstCommit: firstCommit ? firstCommit[0] : null })
         await this.getBranchesNTags()
         await props.fetchPulls(props.username, props.reponame)
         await props.fetchCommits(props.username, props.reponame, props.checkout, props.checkout_from)
-        await this.setState({ 
-            draw_pulls: this.props.pulls,
-            commit_viewed: this.props.commits[0]
-        })
-        await this.extractIssues(this.props.commits[0].commit.message);
-        await this.getFiles(this.props.commits[0].sha, 0)
-        await this.setUpCanvas(this.props.commits)
-        await this.drawNetwork(this.props.commits.slice());
-        await this.loadPage()
+        if(this.props.commits){
+            await this.setState({ draw_pulls: this.props.pulls })
+            await this.setUpCanvas(this.props.commits)
+            await this.drawNetwork(this.props.commits.slice());
+            await this.loadPage()
+            await this.setState({ commit_viewed: this.props.commits ? this.props.commits[0] : null })
+            if(this.state.commit_viewed) this.setClicked()
+            await this.extractIssues(this.props.commits[0].commit.message);
+            await this.getFiles(this.props.commits[0].sha, 0)
+        }
     }
 
     extractIssues = async (message) => {
@@ -153,7 +177,8 @@ class Network extends Component{
                 n = Number(/#(\d+)/g.exec(n)[1]);
                 if(this.props.issues == null || this.props.issues[n] == null)
                     await this.props.fetchIssue(this.props.username, this.props.reponame, n)
-                done_issues = [this.props.issues[n], ...done_issues]
+                if(this.props.issues) done_issues = [this.props.issues[n], ...done_issues]
+                else break
             }
         }
         // DOING issues
@@ -164,7 +189,8 @@ class Network extends Component{
                 n = Number(n.match(/\d+/g)[0])
                 if(this.props.issues == null || this.props.issues[n] == null)
                     await this.props.fetchIssue(this.props.username, this.props.reponame, n)
-                doing_issues = [this.props.issues[n], ...doing_issues]
+                if(this.props.issues) doing_issues = [this.props.issues[n], ...doing_issues]
+                else break
             }
         }
 
@@ -180,7 +206,7 @@ class Network extends Component{
         if(!this.props.files || !this.props.files[index]){
             await this.props.fetchFiles(this.props.username, this.props.reponame, sha, index);
         }
-        this.setState({ files_viewed: this.props.files[index]})
+        if(this.props.files) this.setState({ files_viewed: this.props.files[index] ? this.props.files[index] : null })
     }
 
     RGBToHex = (rgb) => {
@@ -539,7 +565,7 @@ class Network extends Component{
         let currMonth = null
 
         let x = this.state.NEXT_X
-        let index_offset = this.state.page ? (this.state.page * this.state.COMMITS_PER_PAGE) : 0
+        let index_offset = this.state.page ? this.props.commits.length : 0
         let commitsWithX = commits.map((commit, i) => {
             // Initialize date
             if(firstDate){
@@ -583,6 +609,8 @@ class Network extends Component{
             let c = {
                 x,
                 ...commit,
+                issues: commit.commit.message.match(/#\d+/g),
+                done: commit.commit.message.match(/((F|f)ix(es|ed)?|(C|c)lose(s|d)?|(R|r)esolve(s|d)?)\s#\d+/g),
                 index: index_offset + i,
                 drawn: false
             }
@@ -601,7 +629,7 @@ class Network extends Component{
             if(!!branchesQ.length && branch === null) { 
                 branch = branchesQ.shift()
                 // dequeue next branches with the same commit pointing to
-                while(!!branchesQ.length && branchesQ[0][1].sha === branch[1].sha){
+                while(!!branchesQ.length && branchesQ[0][1].committedDate === branch[1].committedDate){
                     let dup = branchesQ.shift()
                     this.props.updateBranch(dup[0], 'commit', index_offset + i)
                 }
@@ -610,7 +638,7 @@ class Network extends Component{
             if(!!tagsQ.length && tag === null) { 
                 tag = tagsQ.shift()
                 // dequeue next tags with the same commit pointing to
-                while(!!tagsQ.length && tagsQ[0][1].sha === tag[1].sha){
+                while(!!tagsQ.length && tagsQ[0][1].committedDate === tag[1].committedDate){
                     let dup = tagsQ.shift()
                     this.props.updateTag(dup[0], 'commit', index_offset + i)
                 }
@@ -1744,15 +1772,22 @@ class Network extends Component{
             .attr('focusable', false)
 
         this.setState({ NEXT_X: 0-MARGINS.right })
-
+        let networkClass = this
         let zoom = d3.zoom()
             .scaleExtent([1, 1])
             .on('zoom', () => {
-                let timeline = d3.select('#timeline')
                 let network = d3.select('#network-graph-group')
+                let timeline = d3.select('#timeline')
+
                 let t = d3.event.transform;
                 let trans_x = `translate(${t.x},20)`
-                network.attr('transform', d3.event.transform);
+                // Monitor TRAVELED_X
+                if(networkClass.state.TRAVELED_X > -t.x) {
+                    networkClass.setState({ TRAVELED_X: -t.x })
+                    networkClass.loadPage()
+                }
+                
+                network.attr('transform', `translate(${t.x},${t.y})`);
                 timeline.attr('transform', trans_x)
             })
 
@@ -1768,8 +1803,16 @@ class Network extends Component{
 
 
         // Timeline
-        canvas.append('g')
+        let timeline = canvas.append('g')
             .attr('id', 'timeline')
+        // Indicater of clicked
+        timeline.append('g')
+            .append('rect')
+            .attr('id', 'clicked')
+            .attr('x', 0)
+            .attr('y', -20)
+            .attr('width', 0)
+            .attr('height', MAX_HEIGHT)
 
         // Network Graph
         let networkGraph = canvas.append('g')
@@ -1785,6 +1828,7 @@ class Network extends Component{
             .attr('width', 0)
             .attr('height', 0)
 
+
         networkGraph.append('g')
             .attr('id', 'cached-connections')
         networkGraph.append('g')
@@ -1797,10 +1841,6 @@ class Network extends Component{
             .attr('id', 'tag-pointers')
         networkGraph.append('g')
             .attr('id', 'commit-nodes')
-
-        canvas.on('mouseenter', function(){
-            this.focus()
-        })
     }
 
     getHeight = () => {
@@ -1813,6 +1853,8 @@ class Network extends Component{
     }
 
     drawNetwork = async (fetched_commits) => {
+        let fetchedCount = fetched_commits.length
+
         let MAX_WIDTH = this.state.MAX_WIDTH;
         let MAX_HEIGHT = this.state.MAX_HEIGHT;
         let MARGINS = this.state.MARGINS;
@@ -1821,6 +1863,7 @@ class Network extends Component{
 
         // Get X and Y Coordinates
         let commitsWithX = this.getXCoords(fetched_commits)
+
         this.props.updatePageCommits(commitsWithX, this.state.page)
         let commitsWithYandX = await this.getYCoords(commitsWithX)
         this.props.updateCommits(commitsWithYandX)
@@ -1948,7 +1991,9 @@ class Network extends Component{
         }
 
         // CONNECTIONS PATHS
-        let draw_commits = commits.slice(this.state.page * this.state.COMMITS_PER_PAGE, (this.state.page + 1)* this.state.COMMITS_PER_PAGE)
+        let start = this.state.page ? this.props.commits.length - fetchedCount : 0
+        let end = this.props.commits.length
+        let draw_commits = commits.slice(start, end)
         let parentPaths = this.getParentPaths(draw_commits)
         networkGraph.select('#connections')
             .append('g')
@@ -1986,27 +2031,51 @@ class Network extends Component{
                     .attr('d', (d) => 'M '+ d.mx + ' ' + d.my + ' C ' + d.cx1 + ' ' + d.cy1 + ', ' + d.cx2 + ' ' + d.cy2 + ', ' + d.cx + ' ' + d.cy)
         
         // COMMIT NODES
-        networkGraph.select('#commit-nodes')
+        let commitNodes = networkGraph.select('#commit-nodes')
             .append('g')
             .selectAll('circle')
             .data(draw_commits)
             .enter()
-                .append('circle')
-                .attr('class', 'commit-node')
-                .attr('cx', (d) => (Number(d.x)))
-                .attr('cy', (d) => d.y)
-                .attr('r', networkClass.state.NODE_RADIUS)
-                .attr('stroke', (d) => d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y))
-                // .style('filter', (d) => 'drop-shadow( 0px 0px 5px ' + colorScale(d.y) + ')' )
-            .on('mouseover', function(d){
-                networkClass.setState({ commit_viewed: d })
-                d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS*1.75)
-                networkClass.extractIssues(d.commit.message);
-                networkClass.getFiles(d.sha, d.index);
-            })
-            .on('mouseout', function(){
-                d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS)
-            })
+
+        // Add shadow
+        commitNodes.filter((d) => !!d.issues && !d.done)
+            .append('circle')
+            .attr('class', 'commit-halo has-done')
+            .attr('cx', (d) => (Number(d.x)))
+            .attr('cy', (d) => d.y)
+            .attr('r', networkClass.state.NODE_RADIUS*2.5)
+            .attr('fill', (d) => d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y))
+            .attr('stroke', (d) => d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y))
+
+        commitNodes.filter((d) => d.done)
+            .append('circle')
+            .attr('class', 'commit-halo')
+            .attr('cx', (d) => (Number(d.x)))
+            .attr('cy', (d) => d.y)
+            .attr('r', networkClass.state.NODE_RADIUS*2.5)
+            .attr('fill', (d) => d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y))
+        
+        // Add circles 
+        commitNodes.insert('circle')
+            .attr('class', 'commit-node')
+            .attr('cx', (d) => (Number(d.x)))
+            .attr('cy', (d) => d.y)
+            .attr('r', (d) => d.parents.length > 1 ? networkClass.state.NODE_RADIUS*0.5 : networkClass.state.NODE_RADIUS)
+            .attr('stroke', (d) => d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y))
+            .attr('fill', (d) => d.parents.length > 1 ? (d.y === networkClass.state.MASTER_Y ? 'black' : colorScale(d.y)) : 'white')
+        .on('click', function(d){
+            networkClass.checkSession()
+            networkClass.setState({ commit_viewed: d })
+            networkClass.setClicked()
+            networkClass.extractIssues(d.commit.message);
+            networkClass.getFiles(d.sha, d.index);
+        })
+        .on('mouseover', function(){
+            d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS*1.75)
+        })
+        .on('mouseout', function(){
+            d3.select(this).transition().attr('r', networkClass.state.NODE_RADIUS)
+        })
 
         // Draw branch ui pointers
         let canvas_branches = this.props.canvas_branches
@@ -2108,12 +2177,8 @@ class Network extends Component{
 
 
         if(this.state.page === 0){
-            canvas.on('mouseenter', function(){
-                this.focus()
-            })
-
-            canvas.on('keydown', function(){
-                if(d3.event.key === 'ArrowLeft' || d3.event.key === 'ArrowRight' || d3.event.key === 'ArrowUp' || d3.event.key === 'ArrowDown'){
+            d3.select('body').on('keydown', function(){
+                if(!networkClass.props.canvas_input && (d3.event.key === 'ArrowLeft' || d3.event.key === 'ArrowRight' || d3.event.key === 'ArrowUp' || d3.event.key === 'ArrowDown')){
                     if(!networkClass.state.panning){
                         networkClass.setState({ panning: true })
                         // compute transform
@@ -2124,7 +2189,6 @@ class Network extends Component{
                         let transform = network.attr('transform').match(/.*translate\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\).*/)
                         let x = Number(transform ? transform[1] : 0)
                         let y = Number(transform ? transform[2] : 0)
-
                         // check keycode
                         switch (d3.event.key) {
                             case 'ArrowLeft': //left 
@@ -2134,10 +2198,10 @@ class Network extends Component{
                                 x = MAX_WIDTH < width ? Math.max(MAX_WIDTH, x-180) : x
                                 break;
                             case 'ArrowUp': // up
-                                y = MAX_HEIGHT < height ? Math.min(y+180, 40) : y
+                                y = MAX_HEIGHT < height ? Math.min(y+90, 40) : y
                                 break;
                             case 'ArrowDown':
-                                y = MAX_HEIGHT < height ? Math.max(MAX_HEIGHT - height - 20, y-180) : y
+                                y = MAX_HEIGHT < height ? Math.max(MAX_HEIGHT - height - 20, y-90) : y
                                 break;
                             default:
                                 break;
@@ -2172,8 +2236,8 @@ class Network extends Component{
                 }
             }).on('focus', function(){});
        
-            canvas.on('keyup', function(){
-                if(d3.event.key === 'ArrowLeft' || d3.event.key === 'ArrowRight' || d3.event.key === 'ArrowUp' || d3.event.key === 'ArrowDown'){
+            d3.select('body').on('keyup', function(){
+                if(!networkClass.props.canvas_input && (d3.event.key === 'ArrowLeft' || d3.event.key === 'ArrowRight' || d3.event.key === 'ArrowUp' || d3.event.key === 'ArrowDown')){
                     networkClass.setState({ panning: false })
                     // notify zoom transform
                     let x = networkClass.state.TRANS_X
@@ -2186,6 +2250,7 @@ class Network extends Component{
     }
 
     loadPage = async () => {
+        this.checkSession()
         if(!this.state.last_page && !this.state.loading){
             this.setState({ loading: true })
             while(!this.state.last_page && this.state.orphans.length && this.state.TRAVELED_X < this.state.orphans[0].x){
@@ -2207,6 +2272,10 @@ class Network extends Component{
             files_viewed 
         } = this.state;
 
+        if(this.state.toAuth || this.state.toLogin){
+            return <Redirect to={{ pathname: '/', state: { toAuth: !!this.state.toAuth, toLogin: !!this.state.toLogin, toMain: false } }}/>
+        }
+
         return(
             <div id='network-tab'>
                 <div id='network-graph-wrapper'>
@@ -2222,8 +2291,21 @@ class Network extends Component{
                             <div id='commit-text'>
                                 <div id='commit-info'>
                                     <div>
-                                    <span id='commit-author' className='mr-5'>{commit_viewed.author ? commit_viewed.commit.author.name : commit_viewed.commit.author ? commit_viewed.commit.author.user.name : commit_viewed.commit.committer.user.name}</span>
-                                    <span id='commit-username' className='mr-5'>{`@${commit_viewed.author ? commit_viewed.author.login : commit_viewed.commit.author ? commit_viewed.commit.author.name.replace(/\s/g, '') : commit_viewed.commit.committer.name.replace(/\s/g, '')}`}</span>
+                                    {!commit_viewed.author && 
+                                        <span id='commit-author' className='mr-5'>{
+                                        commit_viewed.commit.author.user ? 
+                                            commit_viewed.commit.author.user.name : 
+                                            commit_viewed.commit.author.name
+                                        }</span>
+                                    }
+                                    <span id='commit-username' className='mr-5'>{
+                                        `@${commit_viewed.author ? 
+                                            commit_viewed.author.login 
+                                            : commit_viewed.commit.author ? 
+                                                commit_viewed.commit.author.name.replace(/\s/g, '')
+                                                : commit_viewed.commit.committer.name.replace(/\s/g, '')
+                                    }`}
+                                    </span>
                                     <span id='commit-date'>{this.dateInWords(commit_viewed.commit.committer.date)}</span>
                                     </div>
                                     <div id='commit-sha'>
@@ -2428,7 +2510,8 @@ function mapStateToProps(state){
         canvas_branches: state.ui.canvas.branches,
         canvas_tags: state.ui.canvas.tags,
         canvas_months: state.ui.canvas.months,
-        canvas_dates: state.ui.canvas.dates
+        canvas_dates: state.ui.canvas.dates,
+        canvas_input: state.ui.canvas.input ? state.ui.canvas.input : false
     }
 }
 

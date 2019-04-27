@@ -2,7 +2,7 @@
 	border-top: 0.5px #cacaca solid;
 	opacity: 1;
 	width: calc(95vw - 100px);
-	height: calc(100vh - var(--network-height) - 26px);
+	height: calc(100vh - var(--network-height) - 20px);
 	padding-top: 10px;
 	padding-bottom: 10px;
 	background: var(--color-lb);
@@ -218,6 +218,7 @@
 
 .change-bars:hover .tooltip{
 	opacity: 1;
+	display: block;
 }
 
 .tooltip{
@@ -231,7 +232,9 @@
 	min-width: 100px;
 	left: -110px;
 	opacity: 0;
+	display: none;
 	transition: opacity 0.3s;
+	z-index: 99;
 }
 
 .filler{
@@ -392,6 +395,10 @@
 	font-size: 14px;
 	font-weight: 600;
 	margin-bottom: 15px;
+	text-overflow: ellipsis;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+	hyphens: auto;
 }
 
 .issue-milestone{
@@ -443,5 +450,6 @@
 	padding-left: 10px;
 	padding-right: 10px;
 	margin-right: 5px;
+	margin-top: 3px;
 	border-radius: 15px;
 }

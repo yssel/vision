@@ -1,4 +1,5 @@
 import { createApolloFetch } from 'apollo-fetch'
+import store from '../store';
 
 // Returns an authenticated fetch
 // Usage: 
@@ -13,7 +14,7 @@ export function* authenticate(){
 		}
 
 		options.headers['Access-Control-Request-Headers'] = 'Content-Type, Authorization'
-		options.headers['authorization'] = 'Bearer 31b33190759de454348a4a70a3bc93420e62faba'
+		options.headers['authorization'] =  `token ${store.getState().ui.canvas.token}`
 		options.headers['Content-Type'] = 'application/json'
 		options.withCredentials = true
 		next()
@@ -22,8 +23,7 @@ export function* authenticate(){
 }
 
 export async function authenticateRest(url, json=false){
-	var bearer = 'Bearer 31b33190759de454348a4a70a3bc93420e62faba';
-	// var bearer = 'Bearer c43284ae83a0aadc7025181c9ad75e29008ac5b3';
+	var token = `token ${store.getState().ui.canvas.token}`
 	
 	let response
 	if(json){
@@ -31,7 +31,7 @@ export async function authenticateRest(url, json=false){
 		method: 'GET',
 		withCredentials: true,
 		headers: {
-		    'Authorization': bearer,
+		    'Authorization': token,
 		    'Content-Type': 'application/json'}
 		}).then(function(response) { return response.json() })
 	}else{
@@ -39,7 +39,7 @@ export async function authenticateRest(url, json=false){
 		method: 'GET',
 		withCredentials: true,
 		headers: {
-		    'Authorization': bearer,
+		    'Authorization': token,
 		    'Content-Type': 'application/json'}
 		})	
 	}

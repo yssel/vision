@@ -69,7 +69,7 @@ export default function commitsReducer(state = {
 		}
 
 		case "UPDATE_PAGE_COMMITS": {
-			let end = action.payload.page * 50
+			let end = action.payload.page ? state.data.commits.length : 0
 			let commits = [...state.data.commits.slice(0, end), ...action.payload.commits]
 			return {
 				...state,

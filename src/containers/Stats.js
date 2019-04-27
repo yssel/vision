@@ -87,10 +87,10 @@ class Stats extends Component{
 
 		} = this.state
 
-    	this.generateGroupedBar(d3.select('#commits-bar .graph'))
+    	if(this.state.commit_activity.length) this.generateGroupedBar(d3.select('#commits-bar .graph'))
     	// Issues line
-    	this.generateLine(d3.select('#issues-line .graph'),open_issues, closed_issues)
-    	this.generateLine(d3.select('#prs-line .graph'), proposed_prs, merged_prs)
+    	if(open_issues && closed_issues) this.generateLine(d3.select('#issues-line .graph'), open_issues, closed_issues, ['opened', 'closed'])
+    	if(proposed_prs && merged_prs) this.generateLine(d3.select('#prs-line .graph'), proposed_prs, merged_prs, ['proposed', 'merged'])
 
     	this.generateDonut(d3.select('#issues-donut .graph'),labels)
 
@@ -346,11 +346,9 @@ class Stats extends Component{
     			})
 		    	break;
 		    case 1: 
-		    	console.log(commit_activity)
 		    	padding = 0.6
 		    	keys = [ 'SU', 'M', 'T', 'W', 'TH', 'F', 'S']
 		    	data = [4, 3, 2, 1].map((n) => {
-		    		console.log(commit_activity[commit_activity.length-n])
 		    		return(
 		    			{ 
 			    			week: this.getWordDate(commit_activity[commit_activity.length-n].week, 'bars'),
@@ -358,7 +356,6 @@ class Stats extends Component{
 			    		}	
 		    		)
 		    	})
-		    	console.log(data)
 		    	keys.map((k, i) => {
     				[0, 1, 2, 3].map((n) =>{
     					data[n][k] = data[n].days[i]
@@ -366,7 +363,6 @@ class Stats extends Component{
     				})
     				return true
     			})
-    			console.log(data)
 		    	break;
     		default:
     			break;
@@ -448,23 +444,116 @@ class Stats extends Component{
 			.call(yAxis);
     }
 
-    generateLine = (container, data=null, data2=null) => {
+    generateLine = (container, data=null, data2=null, keywords) => {
     	let width = container.node().getBoundingClientRect().width;
     	let height = container.node().getBoundingClientRect().height;
 
-    	let margin = ({top: Math.max(40, height/5*1), right: 0, bottom: 0, left: 0})
+    	let x1 = d3.scaleBand()
+		    .domain(['SU', 'M', 'TU', 'W', 'TH', 'F', 'SA'])
+		    .rangeRound([0, width/2])
+
+    	let margin = ({top: Math.max(50, height/5*1), right: 0, bottom: 0, left: 0})
     	let x = d3.scaleLinear()
     		.domain([0, 13])
     		.rangeRound([margin.left, width - margin.right])
 
     	let y = d3.scaleLinear()
     		.domain([0, d3.max(Object.values(data).concat(Object.values(data2)), (d) => d.length)])
-    		.rangeRound([height - margin.bottom, margin.top])
+    		.rangeRound([height, margin.top])
 
     	let svg = container.select('svg')
-
-    	// Draw area
     	svg.append('g')
+    		.attr('class', 'ticklines')
+    		.style('font', '8px Muli')
+    		.attr('transform', `translate(0, ${height-10})`)
+    		.call(d3.axisTop(x1).tickSizeOuter(0).tickSize(0))
+
+    	svg.append('g')
+    		.attr('class', 'ticklines this-week')
+    		.style('font', '8px Muli')
+    		.attr('transform', `translate(${width/2}, ${height-10})`)
+    		.call(d3.axisTop(x1).tickSizeOuter(0).tickSize(0))
+
+    	let day = new Date().getDay()+7
+    	// Draw area
+    	let hoverable = svg.append('g')
+    		.attr('class', 'hoverable')
+
+    	hoverable.append('line')
+    		.attr('x1', 0)
+    		.attr('y1', 47)
+    		.attr('x2', 0)
+    		.attr('y2', height)
+    		.style('opacity', '0')
+    	hoverable.append('text')
+    		.attr('class', 'one')
+    		.text(' ')
+    		.attr('text-anchor','end')
+    		.attr('x', -1)
+    		.attr('y', 35)
+    		.style('opacity', '0')
+    		.style('font', '8px Muli')
+    	hoverable.append('text')
+    		.attr('class', 'hover-label')
+    		.text(keywords[0])
+    		.attr('text-anchor','end')
+    		.attr('x', -1)
+    		.attr('y', 43)
+    		.style('opacity', '0')
+    		.style('font', '300 7px Muli')
+    	hoverable.append('text')
+    		.attr('class', 'two')
+    		.text(' ')
+    		.attr('text-anchor','start')
+    		.attr('x', 1)
+    		.attr('y', 35)
+    		.style('opacity', '0')
+    		.style('font', '8px Muli')
+    	hoverable.append('text')
+    		.attr('class', 'hover-label')
+    		.text(keywords[1])
+    		.attr('text-anchor','start')
+    		.attr('x', 1)
+    		.attr('y', 43)
+    		.style('opacity', '0')
+    		.style('font', '300 7px Muli')
+
+    	svg.append('g')
+    		.attr('class', 'today')
+    		.append('rect')
+    		.attr('x', day*width/14)
+    		.attr('y', 0)
+    		.attr('width', width/14)
+    		.attr('height', height)
+
+    	svg.on('mousemove', () => {
+    		let coords = d3.mouse(svg.node())
+    		hoverable.attr('transform', `translate(${coords[0]})`)
+    		let index = coords[0]
+    		let size = width/14
+    		let i = Math.floor(index/size)
+    		i = i < 0 ? 0 : i
+    		hoverable.select('.one').text(`${data[i].length}`)
+    		hoverable.select('.two').text(`${data2[i].length}`)
+    	})
+
+    	svg.on('mouseover', (d) => {
+    		hoverable.select('line').transition().style('opacity', '1')
+    		hoverable.select('.one').transition().style('opacity', '1')
+    		hoverable.select('.two').transition().style('opacity', '1')
+    		hoverable.selectAll('.hover-label').transition().style('opacity', '1')
+    	})
+
+    	svg.on('mouseout', () => {
+    		hoverable.select('line').transition().style('opacity', '0')
+    		hoverable.select('.one').transition().style('opacity', '0')
+    		hoverable.select('.two').transition().style('opacity', '0')
+    		hoverable.selectAll('.hover-label').transition().style('opacity', '0')
+    	})
+    	
+    	let graph = svg.append('g')
+    		.attr('class', 'graph')
+    	graph.append('g')
     		.append('path')
     		.attr('class', 'back-fill')
     		.datum(Object.entries(data))
@@ -474,7 +563,7 @@ class Stats extends Component{
 				.y0(y(0))
 				.y1((d) => y(d[1].length)))
 
-		svg.append('g')
+		graph.append('g')
     		.append('path')
     		.attr('class', 'front-fill')
     		.datum(Object.entries(data2))
@@ -530,16 +619,13 @@ class Stats extends Component{
 						<div className='graph-title'>Commits in <span className='code ml-5'>{ master_name}</span></div>
 						<div className='graph-subtitle'>Activities of default branch</div>
 						<div className='graph-modes'>
-							<div>2 weeks</div>
-							<div className='active'>1 month</div>
+							Showing last month activity
 						</div>
 						<div className='graph'>
 							<svg></svg>
 						</div>
 					</div>
 					<div id='issues-line'>
-						<div className='graph-title'>Issues</div>
-						<div className='graph-subtitle'>Opened vs. Closed</div>
 						<div className='graph'>
 							<svg id='issues-line-graph'>
 								<defs>
@@ -557,10 +643,10 @@ class Stats extends Component{
 								</defs>
 							</svg>
 						</div>
+						<div className='graph-title'>Issues</div>
+						<div className='graph-subtitle'><div className='sub-label' style={{ background: 'rgba(248, 183, 57, 0.9)' }}></div>Opened<div className='sub-label' style={{ background: 'rgba(5, 63, 94, 0.9)' }}></div>Closed</div>
 					</div>
 					<div id='prs-line'>
-						<div className='graph-title'>Pull Requests</div>
-						<div className='graph-subtitle'>Proposed vs. Merged</div>
 						<div className='graph'>
 							<svg id='prs-line-graph'>
 								<defs>
@@ -578,6 +664,8 @@ class Stats extends Component{
 								</defs>
 							</svg>
 						</div>
+						<div className='graph-title'>Pull Requests</div>
+						<div className='graph-subtitle'><div className='sub-label' style={{ background: 'rgba(50, 219, 198, 0.9)' }}></div>Proposed<div className='sub-label' style={{ background: 'rgba(86, 7, 100, 0.9)' }}></div>Merged</div>
 					</div>
 				</div>
 

@@ -1,0 +1,203 @@
+#team-page{
+	background: #fafafa;
+	width: 100%;
+	height: 100%;
+	display: grid;
+	grid-template-columns: 25% 25% auto;
+	font-family: 'Assistant';
+}
+
+#team-page>div{
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	position: relative;
+}
+
+#team-page #assignees{
+	background: var(--color-lb);
+}
+
+#team-page #full-issue{
+	background: white;
+}
+
+#team-page>div>.list{
+	flex-grow: 1;
+	height: 100%;
+	overflow-y: auto;
+}
+
+#team-page>div>.list::-webkit-scrollbar-track, #full-issue .block::-webkit-scrollbar-track{
+	border-radius: 10px;
+	background-color: var(--color-3);
+}
+
+#team-page>div>.list::-webkit-scrollbar, #full-issue .block::-webkit-scrollbar{
+	width: 7px;
+	background-color: var(--color-lb);
+}
+
+#team-page>div>.list::-webkit-scrollbar-thumb, #full-issue .block::-webkit-scrollbar-thumb{
+	border-radius: 10px;
+	background: var(--color-2);
+}
+
+#team-page .null{
+	top: 0;
+	color: var(--color-3);
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center; 
+}
+
+#team-page .header{
+	margin: 25px;
+	margin-bottom: 5px;
+	font-family: 'Poppins';
+	font-weight: 600;
+	font-size: 0.9em;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+#team-page .header .title{
+	flex-grow: 1;
+}
+
+#team-page .header .count{
+	color: white;
+	font-size: 0.8em;
+	background: var(--color-4);
+	padding-left: 10px;
+	padding-right: 10px;
+	border-radius: 20px;
+}
+
+#team-page .member{
+	display: flex;
+	flex-direction: row;
+	margin: 10px;
+	margin-left: 15px;
+	margin-right: 15px;
+	background: white;
+	box-shadow: var(--box-shadow-light);
+	padding: 10px;
+	border-radius: 5px;
+	border: 0.5px solid rgba(202, 202, 202, 0.5);
+}
+
+#team-page .member .avatar{
+	height: 50px;
+}
+
+#team-page .member .avatar img{
+	height: 100%;
+	border-radius: 50%;
+	border: 0.5px solid #fafafa;
+}
+
+#team-page .member .detail{
+	padding-left: 15px;
+	flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+#team-page .member .name{
+	font-family: 'Muli';
+	font-weight: 600;
+	font-size: 0.8em;
+}
+
+#team-page .member .login{
+	font-weight: 600;
+	font-size: 0.8em;
+	color: var(--color-2);
+}
+
+#team-page #assignee-issues .list .block{
+	padding-left: 15px;
+	padding-right: 15px;
+}
+
+#assignee-issues .issue:hover, #assignees .member:hover{ 
+	transition: all 0.5s;
+}
+#assignee-issues .issue:hover{
+	background: #e7eaf6!important;
+}
+#assignees .member:hover{
+	background: #deecfc!important;
+}
+
+#full-issue{
+	text-overflow: ellipsis;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
+	hyphens: auto;
+	white-space: pre-wrap;
+}
+
+#full-issue .block{
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding-top: 30px;
+	overflow-y: auto;
+	font-family: 'Muli';
+	font-size: 0.9em;
+}
+
+#full-issue .block>div{
+	padding-left: 40px;
+	padding-right: 40px;
+}
+
+#full-issue .block .opened{
+	background: var(--color-lb);
+	display: flex;
+	flex-direction: row;
+	align-items:  center;
+}
+
+#full-issue .block .opened .author{
+	height: 40px;
+	padding: 5px;
+	padding-left: 0;
+	padding-right: 15px;
+}
+
+#full-issue .block .opened .author img{
+	height: 100%;
+	border-radius: 50%;
+}
+
+#full-issue .number{
+	color: var(--color-4);
+	font-weight: 600;
+	font-family: 'Roboto Slab';
+}
+
+#full-issue .title{
+	color: var(--color-1);
+	font-size: 1.3em;
+	font-weight: 600;
+	font-family: 'Poppins';
+	margin-top: 10px;
+	margin-bottom: 20px;
+}
+
+#full-issue .opened{
+	color: gray;
+}
+
+#full-issue .body{
+	padding-top: 20px;
+	padding-bottom: 40px;
+}

@@ -36,6 +36,13 @@
 #network-graph{
 	width: 100%;
 	cursor: move;
+	position: absolute;
+	top: 0;
+}
+
+#clicked{
+	fill: var(--color-4);
+	fill-opacity: 0.2;
 }
 
 #network-graph:focus{
@@ -50,7 +57,7 @@
 
 .commit-node{
 	stroke-width: 3.5px;
-	fill: white;
+	/*fill: white;*/
 	cursor: default;
 }
 
@@ -77,4 +84,15 @@
 
 #timeline text{
 	fill: var(--color-2);
+}
+
+.commit-halo{
+	fill-opacity: 0.5;
+	stroke-opacity: 0.2;
+	stroke-width: 3;
+}
+
+.commit-halo.has-done{
+	fill-opacity: 0.0;
+	/*stroke-opacity: 0.5;*/
 }

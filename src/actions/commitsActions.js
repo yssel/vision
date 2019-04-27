@@ -181,12 +181,12 @@ async function fetchRepoCommits(username, reponame, branchCursor = null, untilDa
 						message
 						html_url: url
 						author {
-							user { name }
+							user { name, login }
 							name
 							avatarUrl
 						}
 						committer{
-							user { name }
+							user { name, login }
 							name
 							avatarUrl
 						}
@@ -331,7 +331,6 @@ async function fetchAllCommits(dispatch, username, reponame, lastDate){
 					)
 
 					fetched_commits = removeDuplicatesBy(commits => commits.sha, fetched_commits);
-					console.log('hiii', fetched_commits)
 					fetched_commits.sort(function(a, b) {
 						a = new Date(a.commit.committer.date);
 						b = new Date(b.commit.committer.date);

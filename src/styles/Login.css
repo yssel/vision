@@ -1,0 +1,197 @@
+#login-page{
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+#login-page .title{
+	font-family: 'Josefin Sans';
+	font-size: 2em;
+	letter-spacing: 2px;
+	font-weight: 800;
+	color: var(--color-1);
+}
+
+#login-page .detail{
+	text-align: center;
+	font-family: 'Poppins';
+	font-size: 1.2em;
+	font-weight: 600;
+	line-height: 1.2em;
+	margin-top: 20px;
+	margin-bottom: 20px;
+}
+
+#login-form a{
+	background: black;
+	color: white;
+	font-size: 0.9em;
+	font-family: 'Poppins';
+	text-decoration: none;
+	padding: 15px;
+	border-radius: 4px;
+	box-shadow: var(--box-shadow);
+}
+
+#login-form{
+	display: flex;
+	flex-direction: column;
+	text-align: center;
+	width: 25vw;
+}
+
+#error{
+	font-family: 'Muli';
+	font-size: 0.8em;
+	background: rgba(255,0,0, 0.1);
+	width: calc(70% - 20px);
+	margin-left: 15%;
+	margin-bottom: -20px;
+	padding: 10px;
+	text-align: center;
+	color: red;
+	border-radius: 4px;
+	visibility: hidden;
+}
+
+#login-form>form>div>input{
+	width: 80%;
+	font-family: 'Poppins';
+	font-size: 0.9em;
+	font-weight: 500;
+	border: none;
+	border-radius: 4px;
+	margin: 5px;
+	padding: 10px;
+	background: var(--color-lb);
+}
+
+#login-form>form>input.submit{
+	color: white;
+	border-radius: 4px;
+	border: none;
+	padding: 8px;
+	margin-top: 10px;
+	margin-bottom: 40px;
+	width: calc(80% + 20px);
+	background: var(--color-1);
+	font-family: 'Poppins';
+	font-size: 0.9em;
+}
+
+#login-form>form>div>input:focus{
+	outline: none;
+}
+
+#hero{
+	background: white;
+	width: 100vw;
+	height: 100vh;
+	top: 0;
+	position: absolute;
+	z-index: -1;
+	overflow: hidden;
+}
+
+.hero-gradient {
+	position: relative;
+    width: 100%;
+    top: 60%;
+    background: -webkit-linear-gradient(272deg,var(--color-1) 9%,var(--color-4) 84%);
+    background: linear-gradient(-182deg,var(--color-1) 9%,var(--color-4) 84%);
+    height: 40%;
+}
+
+#wave {
+	position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+}
+
+#wave svg path {
+    fill: white;
+}
+	
+@media screen and (min-width: 1024px) {
+  #wave svg {
+	    -webkit-transform: scale(1.2);
+	    transform: scale(1.2);
+	}
+}
+
+#logged-link{
+	text-decoration: none;
+}
+
+#logged{
+	transition: all 0.3s;
+	display: flex;
+	flex-direction: row;
+	background: rgba(28, 179, 200, 0.3);
+	box-shadow: var(--box-shadow-light);
+	padding: 15px;
+	padding-right: 40px;
+	padding-top: 5px;
+	padding-bottom: 5px;
+	border-radius: 5px;
+	margin-bottom: 20px;
+	height: 40px;
+	position: relative;
+}
+
+#logged-avatar{
+	height: 100%;
+	padding-right: 15px;
+	display: flex;
+	align-items: center;
+}
+
+#logged-avatar img{
+	height: 100%;
+	border-radius: 50%;
+}
+
+#logged-info{
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	font-family: 'Raleway';
+	font-size: 0.8em;
+}
+
+#logged:hover{
+	background: rgba(28, 179, 200, 0.8);
+}
+
+#logged-info .logged-details{
+	text-align: left;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	position: relative;
+}
+
+#logged:hover .log-out{
+	opacity: 1;
+}
+
+#logged .log-out{
+	color: white;
+	transition: opacity 0.3s;
+	opacity: 0;
+	right: 10px;
+	height: calc(100% - 10px);
+	position: absolute;
+	margin-left: 10px;
+	display: flex;
+	align-items: center;
+}
+
+#logged-info .login{
+	font
+	font-weight: 700;
+	color: var(--color-1);
+}

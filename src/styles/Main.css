@@ -7,20 +7,18 @@
 
 #sidenav{
 	border-right: 0.5px solid #cacaca;
-	/*background: blue;*/
-	/*z-index: 2;*/
 	height: 100vh;
 	width: calc(var(--sidenav-width) - 0.5px);
 	position: relative;
 }
 
-#burger{
-	top: 0;
-}
-
 #logout{
 	position: absolute;
 	top: 93vh;
+}
+
+#logout i{
+	transform: rotate(180deg);
 }
 
 #nav{
@@ -80,9 +78,88 @@
 #legends{
 	flex-grow: 1;
 	text-align: right;
-	font-family: 'Roboto Slab';
-	color: lightgray;
-	font-size: 11px;
+}
+
+#view-legends{
+	position: relative;
+	float: right;
+	background: var(--color-2);
+	box-shadow: var(--box-shadow);
+	font-family: 'Raleway';
+	font-size: 0.7em;
+	border-radius: 2px;
+	padding: 5px;
+	padding-left: 10px;
+	padding-right: 10px;
+	cursor: default;
+}
+
+#view-legends:hover .legends{
+	opacity: 1;
+	display: block;
+}
+
+#view-legends .legends{
+	display: none;
+	opacity: 0;
+	width: 35vw;
+	background: rgba(222, 222, 222, 0.8);
+	position: absolute;
+	right: 0;
+	margin-top: 10px;
+	z-index: 99;
+	border-radius: 3px;
+	padding: 15px;
+}
+#view-legends .legends .drawings{
+	padding: 5px;
+	padding-left: 0;
+	padding-right: 0;
+}
+#view-legends .legends>div{
+	text-align: left;
+	display: grid;
+	grid-template-columns: 30% 30% auto;
+	grid-gap: 10px;
+}
+#view-legends .legends .sh{
+	text-transform: uppercase;
+	color: var(--color-1);
+}
+#view-legends .legends .h{
+	padding-bottom: 0;
+	font-family: 'Raleway';
+	font-weight: 800;
+	font-size: 1.1em;
+	padding-top: 10px;
+	color: var(--color-1);
+}
+
+#view-legends .legends .detail{
+	font-size: 0.9em;
+	padding-bottom: 10px;
+	font-family: 'Muli';
+	color: var(--color-2);
+}
+
+#view-legends .legends .b>div{
+	display: flex;
+	flex-direction: column; 
+}
+
+#view-legends .legends .b>div>.two{
+	display: grid;
+	grid-template-columns: 50% auto;
+}
+
+#view-legends .legends .b svg{
+	height: 30px;
+	width: 50px;
+}
+
+
+#view-legends:hover{
+	background: var(--color-3);
 }
 
 #page{
@@ -111,4 +188,18 @@
 
 #main::-webkit-scrollbar-thumb{
 	background: var(--color-4);
+}
+
+.legend-line{
+	stroke: black;
+	stroke-width: 2.5px;
+}
+
+#pull-req .pull{
+	stroke-linecap: round;
+	stroke-dasharray: 2, 5;
+}
+
+#done-regular .commit-halo, #done-merge .commit-halo{
+	stroke-width: 0;
 }

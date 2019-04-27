@@ -1,4 +1,4 @@
-import { authenticate } from './fetchActions'
+import { authenticate, authenticateRest } from './fetchActions'
 
 export function updateRepo(field, value){
 	return {
@@ -8,6 +8,12 @@ export function updateRepo(field, value){
 			value
 		}
 	}
+}
+
+export async function getUser(){
+	let link = `https://api.github.com/user`
+	let response = await authenticateRest(link, true)	
+	return response
 }
 
 async function fetchRepoData(username, reponame){
@@ -36,7 +42,7 @@ async function fetchRepoData(username, reponame){
 export function fetchRepo(username, reponame){
 	return async function (dispatch) {
 		// Begin fetch
-		dispatch({ type: "FETCH_REPO", payload: null })
+		dispatch({ type: "FETCH_REPO", payload: username, reponame })
 
 		try{
 			// Fetch repo data

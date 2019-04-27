@@ -1,0 +1,23 @@
+#auth{
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	font-family: 'Poppins';
+	font-size: 1em;
+	line-height: 1em;
+}
+
+#auth .title{
+	font-family: 'Josefin Sans';
+	font-size: 0.9em;
+	letter-spacing: 2px;
+	font-weight: 700;
+	color: var(--color-1);
+}
+
+#auth #msg{
+	font-weight: 800;
+	color: var(--color-1);
+}

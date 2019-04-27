@@ -1,22 +1,9 @@
 import React, { Component } from 'react'
+import { connect } from 'react-redux';
+import { setCanvasDisplay } from '../actions/uiActions';
 import '../styles/SearchBox.css'
 
-/*
-  Usage: 
-  <SearchBox 
-    database= <array of { name, ..other props }> // name field important for filtering results
-    onResultSelect= (result) => {} <function that receives result as param, triggered when a result is selected>
-    
-    optional props:
-    id= <your-id-name>
-    width = <width of search box>
-    initValue= <initial value of input>
-    resetOnFocus= <boolean, whether search input always empties on focus>
-  />
-
-*/
-
-export default class SearchBox extends Component {
+class SearchBox extends Component {
   componentWillMount() {
     let init = this.props.initValue ? this.props.initValue : ''
 
@@ -64,11 +51,13 @@ export default class SearchBox extends Component {
   }
 
   handleFocus = () =>{
+    this.props.setCanvasDisplay('input', true)
     if(this.props.resetOnFocus) this.setState({ value: '' })
     this.showHideResults(true)
   }
 
   handleBlur = () =>{
+    this.props.setCanvasDisplay('input', false)
     this.showHideResults(false)
     this.resetComponent()
   }
@@ -90,7 +79,7 @@ export default class SearchBox extends Component {
         return
       }else{
         const re = new RegExp('.*'+ this.escapeRegExp(value) +'.*', 'i')
-        let results = this.props.database.filter(({name}) => name.match(re))
+        let results = (this.props.database && this.props.database.length) ? this.props.database.filter(({name}) => name.match(re)) : this.props.database
 
         this.setState({
           isLoading: false,
@@ -175,6 +164,14 @@ export default class SearchBox extends Component {
     )
   }
 }
+
+function mapDispatchToProps(dispatch) {
+  return {
+    setCanvasDisplay: (field, value) => dispatch(setCanvasDisplay(field, value))
+  }
+}
+
+export default connect(null, mapDispatchToProps)(SearchBox)
 
 class SearchResult extends Component {
   constructor(props){
